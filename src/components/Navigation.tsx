@@ -2,12 +2,11 @@ import React from 'react';
 import { Icon } from './Icon.tsx';
 import { ThemeToggle } from './ThemeToggle.tsx';
 import { useUser } from '../contexts/UserContext.tsx';
-
-type Page = 'conversation' | 'memory' | 'history' | 'settings' | 'dashboard' | 'community' | 'admin';
+import type { Page, AssistantPage } from '../types.ts';
 
 interface NavigationProps {
   currentPage: Page;
-  onNavigate: (page: Page) => void;
+  onNavigate: (page: AssistantPage) => void;
   isMobileOpen: boolean;
   onMobileClose: () => void;
   isCollapsed: boolean;
@@ -108,10 +107,10 @@ export const Navigation: React.FC<NavigationProps> = ({
             <NavItem icon="users" label="Community" isActive={currentPage === 'community'} onClick={() => window.location.hash = '#/community'} isCollapsed={isCollapsed} />
             {mode === 'assistant' && (
               <>
-                <NavItem icon="chat" label="Conversation" isActive={currentPage === 'conversation'} onClick={() => onNavigate('conversation' as Page)} isCollapsed={isCollapsed} />
-                <NavItem icon="brain" label="Memory" isActive={currentPage === 'memory'} onClick={() => onNavigate('memory' as Page)} isCollapsed={isCollapsed} />
-                <NavItem icon="history" label="History" isActive={currentPage === 'history'} onClick={() => onNavigate('history' as Page)} isCollapsed={isCollapsed} />
-                <NavItem icon="settings" label="Settings" isActive={currentPage === 'settings'} onClick={() => onNavigate('settings' as Page)} isCollapsed={isCollapsed} />
+                <NavItem icon="chat" label="Conversation" isActive={currentPage === 'conversation'} onClick={() => onNavigate('conversation')} isCollapsed={isCollapsed} />
+                <NavItem icon="brain" label="Memory" isActive={currentPage === 'memory'} onClick={() => onNavigate('memory')} isCollapsed={isCollapsed} />
+                <NavItem icon="history" label="History" isActive={currentPage === 'history'} onClick={() => onNavigate('history')} isCollapsed={isCollapsed} />
+                <NavItem icon="settings" label="Settings" isActive={currentPage === 'settings'} onClick={() => onNavigate('settings')} isCollapsed={isCollapsed} />
               </>
             )}
         </ul>

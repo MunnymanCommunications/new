@@ -61,3 +61,7 @@ export interface AppLog {
   profiles?: { email: string };
   assistants?: { name: string };
 }
+
+export type AssistantPage = 'conversation' | 'memory' | 'history' | 'settings';
+export type DashboardPage = 'dashboard' | 'community' | 'admin';
+export type Page = AssistantPage | DashboardPage;

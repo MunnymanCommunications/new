@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getSupabase } from '../lib/supabaseClient.ts';
-import type { Assistant, HistoryEntry, MemoryItem } from '../types.ts';
+import type { Assistant, HistoryEntry, MemoryItem, AssistantPage } from '../types.ts';
 import { useLocalStorage } from '../hooks/useLocalStorage.ts';
 
 import { Navigation } from '../components/Navigation.tsx';
@@ -10,8 +10,6 @@ import ConversationPage from '../pages/ConversationPage.tsx';
 import MemoryPage from '../pages/MemoryPage.tsx';
 import HistoryPage from '../pages/HistoryPage.tsx';
 import SettingsDashboardPage from '../pages/SettingsDashboardPage.tsx';
-
-type Page = 'conversation' | 'memory' | 'history' | 'settings';
 
 interface AssistantLayoutProps {
   assistantId: string;
@@ -40,7 +38,7 @@ export default function AssistantLayout({ assistantId }: AssistantLayoutProps) {
     const [memories, setMemories] = useState<MemoryItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [currentPage, setCurrentPage] = useState<Page>('conversation');
+    const [currentPage, setCurrentPage] = useState<AssistantPage>('conversation');
     
     const [history, setHistory] = useLocalStorage<HistoryEntry[]>(`assistant_history_${assistantId}`, []);
 
@@ -242,9 +240,6 @@ export default function AssistantLayout({ assistantId }: AssistantLayoutProps) {
         <div className="flex h-screen bg-base-light dark:bg-dark-base-light overflow-hidden">
             <Navigation 
                 currentPage={currentPage}
-                // FIX: The type of `setCurrentPage` is `Dispatch<SetStateAction<Page>>`, which is not directly assignable
-                // to the `onNavigate` prop's expected type of `(page: Page) => void`. Wrapping the call in a new
-                // function `(page) => setCurrentPage(page)` ensures the type signature matches.
                 onNavigate={(page) => setCurrentPage(page)}
                 assistantName={assistant.name}
                 assistantAvatar={assistant.avatar}
@@ -252,6 +247,7 @@ export default function AssistantLayout({ assistantId }: AssistantLayoutProps) {
                 onMobileClose={() => setIsMobileNavOpen(false)}
                 isCollapsed={isNavCollapsed}
                 onToggleCollapse={() => setIsNavCollapsed(prev => !prev)}
+                mode="assistant"
             />
             
             <main className="flex-1 flex flex-col p-4 md:p-6 transition-all duration-300 relative">
