@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harvey - Settings</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">🤖</div>
+                <h1>HARVEY</h1>
+                <p class="tagline">Your Local AI Assistant</p>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item">
+                    <span class="nav-icon">💬</span>
+                    <span>Chat</span>
+                </a>
+                <a href="instructions.html" class="nav-item">
+                    <span class="nav-icon">📖</span>
+                    <span>Instructions</span>
+                </a>
+                <a href="settings.html" class="nav-item active">
+                    <span class="nav-icon">⚙️</span>
+                    <span>Settings</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-status">
+                <div class="status-item">
+                    <span class="status-dot" id="serverStatus"></span>
+                    <span>Server</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot" id="ollamaStatus"></span>
+                    <span>Ollama</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot" id="modelStatus"></span>
+                    <span>Model</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="settings-container">
+                <h1 style="font-size: 2em; margin-bottom: 10px; background: linear-gradient(90deg, var(--primary-color), var(--secondary-color)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">⚙️ Settings</h1>
+                <p class="subtitle" style="color: var(--text-secondary); margin-bottom: 40px;">Configure Harvey's behavior</p>
+
+                <!-- System Status -->
+                <div class="settings-section">
+                    <h2>📊 System Status</h2>
+
+                    <div class="credential-item">
+                        <span class="credential-label">Harvey Server:</span>
+                        <span class="credential-value" id="harveyStatus">Checking...</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Ollama:</span>
+                        <span class="credential-value" id="ollamaStatusText">Checking...</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Model:</span>
+                        <span class="credential-value" id="modelStatusText">Checking...</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Active Connections:</span>
+                        <span class="credential-value" id="activeConnections">-</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Available Models:</span>
+                        <span class="credential-value" id="availableModels">-</span>
+                    </div>
+                </div>
+
+                <!-- Master Prompt -->
+                <div class="settings-section">
+                    <h2>🎯 Master Prompt</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 15px;">
+                        This system prompt is prepended to all conversations, defining Harvey's personality and behavior.
+                    </p>
+
+                    <div class="setting-item">
+                        <label for="masterPrompt">System Prompt:</label>
+                        <textarea id="masterPrompt" placeholder="Loading..."></textarea>
+                    </div>
+
+                    <div style="display: flex; gap: 15px; margin-top: 15px;">
+                        <button class="btn btn-primary" onclick="saveMasterPrompt()">
+                            💾 Save Prompt
+                        </button>
+                        <button class="btn btn-secondary" onclick="resetMasterPrompt()" style="width: auto;">
+                            🔄 Reset to Default
+                        </button>
+                    </div>
+
+                    <div id="promptStatus" class="info-box" style="display: none; margin-top: 15px;"></div>
+                </div>
+
+                <!-- Connection Settings -->
+                <div class="settings-section">
+                    <h2>🔐 Connection Settings</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 15px;">
+                        To change these settings, edit <code>config/config.json</code> and restart the server.
+                    </p>
+
+                    <div class="credential-item">
+                        <span class="credential-label">Server Port:</span>
+                        <span class="credential-value">3847</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Password:</span>
+                        <span class="credential-value">Harveylocalmodel01</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Model:</span>
+                        <span class="credential-value">gemma2:27b</span>
+                    </div>
+
+                    <div class="info-box warning" style="margin-top: 15px;">
+                        <strong>⚠️ Note:</strong> Changes to config.json require a server restart to take effect.
+                    </div>
+                </div>
+
+                <!-- Client Settings -->
+                <div class="settings-section">
+                    <h2>💻 Client Settings</h2>
+
+                    <div class="setting-item">
+                        <label for="savedPassword">Saved Password (Browser):</label>
+                        <input type="password" id="savedPassword" placeholder="Enter new password...">
+                    </div>
+
+                    <div style="display: flex; gap: 15px; margin-top: 15px;">
+                        <button class="btn btn-primary" onclick="saveClientPassword()">
+                            💾 Save Password
+                        </button>
+                        <button class="btn btn-secondary" onclick="clearClientPassword()" style="width: auto;">
+                            🗑️ Clear Saved Password
+                        </button>
+                    </div>
+
+                    <div id="clientStatus" class="info-box" style="display: none; margin-top: 15px;"></div>
+                </div>
+
+                <!-- About -->
+                <div class="settings-section">
+                    <h2>ℹ️ About Harvey</h2>
+
+                    <div class="credential-item">
+                        <span class="credential-label">Name:</span>
+                        <span class="credential-value">Harvey</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Full Name:</span>
+                        <span class="credential-value">Helpful Assistant Ready to Virtually Excel You</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Version:</span>
+                        <span class="credential-value" id="harveyVersion">1.0.0</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Powered By:</span>
+                        <span class="credential-value">Ollama + Google Gemma 27B</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const CONFIG = {
+            password: localStorage.getItem('harvey_password') || 'Harveylocalmodel01'
+        };
+
+        const DEFAULT_PROMPT = `You are Harvey, a Helpful Assistant Ready to Virtually Excel You. You are a knowledgeable, friendly, and highly capable AI assistant running locally on the user's machine.
+
+Your core traits:
+- Helpful: You prioritize being genuinely useful and providing accurate, actionable information
+- Patient: You explain concepts clearly and are happy to elaborate when needed
+- Professional: You maintain a respectful, professional tone while being approachable
+- Thorough: You provide comprehensive answers while remaining concise
+- Honest: If you don't know something or are uncertain, you say so clearly
+
+Your capabilities:
+- Answer questions on a wide range of topics
+- Help with coding, writing, analysis, and problem-solving
+- Provide explanations and tutorials
+- Assist with creative tasks
+- Offer advice and recommendations
+
+Important behaviors:
+- Always be helpful and constructive
+- Respect user privacy - you run locally and their data stays on their machine
+- Provide clear, well-structured responses
+- Ask clarifying questions when the user's request is ambiguous
+- Admit limitations and suggest alternatives when you cannot help with something
+
+You are currently running as a local AI assistant powered by the Gemma 27B model through Ollama. You can be accessed via web interface, REST API, or WebSocket connection.`;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkStatus();
+            loadMasterPrompt();
+
+            // Show current saved password (masked)
+            const savedPwd = localStorage.getItem('harvey_password');
+            if (savedPwd) {
+                document.getElementById('savedPassword').placeholder = '••••••••••••••••';
+            }
+        });
+
+        async function checkStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                // Update sidebar status indicators
+                document.getElementById('serverStatus').className = 'status-dot ' +
+                    (data.harvey?.status === 'online' ? 'online' : 'offline');
+                document.getElementById('ollamaStatus').className = 'status-dot ' +
+                    (data.ollama?.status === 'online' ? 'online' : 'offline');
+                document.getElementById('modelStatus').className = 'status-dot ' +
+                    (data.model?.available ? 'online' : 'warning');
+
+                // Update detailed status
+                document.getElementById('harveyStatus').textContent =
+                    data.harvey?.status === 'online' ? '✅ Online' : '❌ Offline';
+                document.getElementById('ollamaStatusText').textContent =
+                    data.ollama?.status === 'online' ? '✅ Online' : '❌ Offline';
+                document.getElementById('modelStatusText').textContent =
+                    data.model?.available ? `✅ ${data.model.displayName}` : '⚠️ Not Downloaded';
+                document.getElementById('activeConnections').textContent =
+                    data.activeConnections || 0;
+                document.getElementById('availableModels').textContent =
+                    data.model?.allModels?.join(', ') || 'None';
+                document.getElementById('harveyVersion').textContent =
+                    data.harvey?.version || '1.0.0';
+
+            } catch (error) {
+                console.error('Status check failed:', error);
+                document.getElementById('harveyStatus').textContent = '❌ Connection Failed';
+            }
+        }
+
+        async function loadMasterPrompt() {
+            try {
+                const response = await fetch('/api/prompt', {
+                    headers: {
+                        'X-Harvey-Auth': CONFIG.password
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('masterPrompt').value = data.masterPrompt;
+                } else {
+                    document.getElementById('masterPrompt').value = DEFAULT_PROMPT;
+                }
+            } catch (error) {
+                console.error('Failed to load prompt:', error);
+                document.getElementById('masterPrompt').value = DEFAULT_PROMPT;
+            }
+        }
+
+        async function saveMasterPrompt() {
+            const prompt = document.getElementById('masterPrompt').value;
+            const statusDiv = document.getElementById('promptStatus');
+
+            try {
+                const response = await fetch('/api/prompt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Harvey-Auth': CONFIG.password
+                    },
+                    body: JSON.stringify({ masterPrompt: prompt })
+                });
+
+                if (response.ok) {
+                    statusDiv.style.display = 'block';
+                    statusDiv.className = 'info-box';
+                    statusDiv.innerHTML = '<strong>✅ Success:</strong> Master prompt saved successfully!';
+                } else {
+                    throw new Error('Failed to save');
+                }
+            } catch (error) {
+                statusDiv.style.display = 'block';
+                statusDiv.className = 'info-box warning';
+                statusDiv.innerHTML = '<strong>❌ Error:</strong> Failed to save master prompt. Check your password.';
+            }
+
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        function resetMasterPrompt() {
+            document.getElementById('masterPrompt').value = DEFAULT_PROMPT;
+        }
+
+        function saveClientPassword() {
+            const password = document.getElementById('savedPassword').value;
+            const statusDiv = document.getElementById('clientStatus');
+
+            if (password) {
+                localStorage.setItem('harvey_password', password);
+                CONFIG.password = password;
+                statusDiv.style.display = 'block';
+                statusDiv.className = 'info-box';
+                statusDiv.innerHTML = '<strong>✅ Success:</strong> Password saved to browser storage.';
+                document.getElementById('savedPassword').value = '';
+                document.getElementById('savedPassword').placeholder = '••••••••••••••••';
+            } else {
+                statusDiv.style.display = 'block';
+                statusDiv.className = 'info-box warning';
+                statusDiv.innerHTML = '<strong>⚠️ Warning:</strong> Please enter a password.';
+            }
+
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        function clearClientPassword() {
+            localStorage.removeItem('harvey_password');
+            const statusDiv = document.getElementById('clientStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'info-box';
+            statusDiv.innerHTML = '<strong>✅ Success:</strong> Saved password cleared.';
+            document.getElementById('savedPassword').placeholder = 'Enter new password...';
+
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harvey - Connection Instructions</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">🤖</div>
+                <h1>HARVEY</h1>
+                <p class="tagline">Your Local AI Assistant</p>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item">
+                    <span class="nav-icon">💬</span>
+                    <span>Chat</span>
+                </a>
+                <a href="instructions.html" class="nav-item active">
+                    <span class="nav-icon">📖</span>
+                    <span>Instructions</span>
+                </a>
+                <a href="settings.html" class="nav-item">
+                    <span class="nav-icon">⚙️</span>
+                    <span>Settings</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-status">
+                <div class="status-item">
+                    <span class="status-dot" id="serverStatus"></span>
+                    <span>Server</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot" id="ollamaStatus"></span>
+                    <span>Ollama</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot" id="modelStatus"></span>
+                    <span>Model</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="instructions-container">
+                <h1>📖 Connection Instructions</h1>
+                <p class="subtitle">How to connect to Harvey from anywhere</p>
+
+                <!-- Connection Credentials -->
+                <div class="instruction-section">
+                    <h2>🔐 Authentication Credentials</h2>
+                    <p>Use these credentials to authenticate with Harvey:</p>
+
+                    <div class="credential-item">
+                        <span class="credential-label">Password:</span>
+                        <span class="credential-value">Harveylocalmodel01</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Auth Header:</span>
+                        <span class="credential-value">X-Harvey-Auth</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Socket Auth Field:</span>
+                        <span class="credential-value">password</span>
+                    </div>
+
+                    <div class="info-box warning">
+                        <strong>⚠️ Security Note:</strong> Change the default password in <code>config/config.json</code> for production use.
+                    </div>
+                </div>
+
+                <!-- Server URLs -->
+                <div class="instruction-section">
+                    <h2>🌐 Server Endpoints</h2>
+
+                    <h3>Base URLs</h3>
+                    <div class="credential-item">
+                        <span class="credential-label">Local:</span>
+                        <span class="credential-value" id="localUrl">http://localhost:3847</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Network:</span>
+                        <span class="credential-value" id="networkUrl">Loading...</span>
+                    </div>
+
+                    <h3>API Endpoints</h3>
+                    <div class="credential-item">
+                        <span class="credential-label">Chat (POST):</span>
+                        <span class="credential-value">/api/chat</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Stream (POST):</span>
+                        <span class="credential-value">/api/chat/stream</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Status (GET):</span>
+                        <span class="credential-value">/api/status</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Info (GET):</span>
+                        <span class="credential-value">/api/info</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Prompt (GET/POST):</span>
+                        <span class="credential-value">/api/prompt</span>
+                    </div>
+                </div>
+
+                <!-- REST API Usage -->
+                <div class="instruction-section">
+                    <h2>📡 REST API Usage</h2>
+
+                    <h3>Simple Chat Request</h3>
+                    <p>Send a single message and get a response:</p>
+                    <div class="code-block"><code>curl -X POST http://localhost:3847/api/chat \
+  -H "Content-Type: application/json" \
+  -H "X-Harvey-Auth: Harveylocalmodel01" \
+  -d '{"message": "Hello, Harvey! How are you?"}'</code></div>
+
+                    <h3>Chat with Conversation History</h3>
+                    <p>Send multiple messages to maintain context:</p>
+                    <div class="code-block"><code>curl -X POST http://localhost:3847/api/chat \
+  -H "Content-Type: application/json" \
+  -H "X-Harvey-Auth: Harveylocalmodel01" \
+  -d '{
+    "messages": [
+      {"role": "user", "content": "My name is Alex"},
+      {"role": "assistant", "content": "Nice to meet you, Alex!"},
+      {"role": "user", "content": "What is my name?"}
+    ]
+  }'</code></div>
+
+                    <h3>Streaming Response</h3>
+                    <p>Get a streaming response for real-time output:</p>
+                    <div class="code-block"><code>curl -X POST http://localhost:3847/api/chat/stream \
+  -H "Content-Type: application/json" \
+  -H "X-Harvey-Auth: Harveylocalmodel01" \
+  -d '{"message": "Write a short poem about coding"}'</code></div>
+
+                    <h3>Response Format</h3>
+                    <div class="code-block"><code>{
+  "success": true,
+  "response": "Hello! I'm doing great, thank you for asking...",
+  "role": "assistant",
+  "conversationId": "uuid-here",
+  "model": "Google Gemma 27B"
+}</code></div>
+                </div>
+
+                <!-- WebSocket Usage -->
+                <div class="instruction-section">
+                    <h2>🔌 WebSocket Connection</h2>
+
+                    <h3>JavaScript Example (Browser)</h3>
+                    <div class="code-block"><code>// Connect to Harvey via Socket.IO
+const socket = io('http://localhost:3847', {
+    auth: {
+        password: 'Harveylocalmodel01'
+    }
+});
+
+// Handle connection
+socket.on('connected', (data) => {
+    console.log('Connected to Harvey:', data.message);
+});
+
+// Send a message
+socket.emit('chat', {
+    message: 'Hello Harvey!',
+    stream: true  // Enable streaming
+});
+
+// Receive streaming chunks
+socket.on('chat_chunk', (data) => {
+    process.stdout.write(data.chunk);
+});
+
+// Receive complete response
+socket.on('chat_complete', (data) => {
+    console.log('\\nFull response:', data.response);
+});
+
+// Handle errors
+socket.on('chat_error', (data) => {
+    console.error('Error:', data.error);
+});</code></div>
+
+                    <h3>Node.js Example</h3>
+                    <div class="code-block"><code>const { io } = require('socket.io-client');
+
+const socket = io('http://localhost:3847', {
+    auth: { password: 'Harveylocalmodel01' }
+});
+
+socket.on('connect', () => {
+    console.log('Connected!');
+    socket.emit('chat', {
+        message: 'Explain quantum computing in simple terms',
+        stream: false
+    });
+});
+
+socket.on('chat_response', (data) => {
+    console.log('Harvey:', data.response);
+    socket.disconnect();
+});</code></div>
+
+                    <h3>WebSocket Events</h3>
+                    <table style="width: 100%; color: var(--text-secondary);">
+                        <tr>
+                            <td style="padding: 8px; border-bottom: 1px solid var(--border-color);"><strong>chat</strong></td>
+                            <td style="padding: 8px; border-bottom: 1px solid var(--border-color);">Send: {message, stream}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border-bottom: 1px solid var(--border-color);"><strong>chat_response</strong></td>
+                            <td style="padding: 8px; border-bottom: 1px solid var(--border-color);">Receive: Non-streaming response</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border-bottom: 1px solid var(--border-color);"><strong>chat_chunk</strong></td>
+                            <td style="padding: 8px; border-bottom: 1px solid var(--border-color);">Receive: Streaming chunk</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border-bottom: 1px solid var(--border-color);"><strong>chat_complete</strong></td>
+                            <td style="padding: 8px; border-bottom: 1px solid var(--border-color);">Receive: Stream complete</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border-bottom: 1px solid var(--border-color);"><strong>clear_conversation</strong></td>
+                            <td style="padding: 8px; border-bottom: 1px solid var(--border-color);">Send: Clear history</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px;"><strong>get_history</strong></td>
+                            <td style="padding: 8px;">Send: Get chat history</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Python Example -->
+                <div class="instruction-section">
+                    <h2>🐍 Python Example</h2>
+
+                    <h3>Using Requests</h3>
+                    <div class="code-block"><code>import requests
+
+url = "http://localhost:3847/api/chat"
+headers = {
+    "Content-Type": "application/json",
+    "X-Harvey-Auth": "Harveylocalmodel01"
+}
+data = {
+    "message": "What is machine learning?"
+}
+
+response = requests.post(url, json=data, headers=headers)
+result = response.json()
+
+print(f"Harvey: {result['response']}")</code></div>
+
+                    <h3>Using Socket.IO</h3>
+                    <div class="code-block"><code>import socketio
+
+sio = socketio.Client()
+
+@sio.event
+def connect():
+    print('Connected to Harvey')
+    sio.emit('chat', {'message': 'Hello!', 'stream': False})
+
+@sio.on('chat_response')
+def on_response(data):
+    print(f"Harvey: {data['response']}")
+    sio.disconnect()
+
+sio.connect('http://localhost:3847',
+            auth={'password': 'Harveylocalmodel01'})
+sio.wait()</code></div>
+                </div>
+
+                <!-- Network Access -->
+                <div class="instruction-section">
+                    <h2>🌍 Remote Access</h2>
+                    <p>To access Harvey from other devices on your network:</p>
+
+                    <ol style="color: var(--text-secondary); line-height: 2;">
+                        <li>Find your computer's local IP address (shown above or run <code>ipconfig</code>/<code>ifconfig</code>)</li>
+                        <li>Ensure your firewall allows connections on port 3847</li>
+                        <li>Use the network URL instead of localhost</li>
+                    </ol>
+
+                    <div class="info-box">
+                        <strong>💡 Tip:</strong> For access outside your local network, consider using a reverse proxy like ngrok or setting up port forwarding on your router.
+                    </div>
+                </div>
+
+                <!-- Troubleshooting -->
+                <div class="instruction-section">
+                    <h2>🔧 Troubleshooting</h2>
+
+                    <h3>Connection Refused</h3>
+                    <p>Make sure the Harvey server is running: <code>npm start</code></p>
+
+                    <h3>401 Unauthorized</h3>
+                    <p>Check that you're including the correct password in the <code>X-Harvey-Auth</code> header or socket auth.</p>
+
+                    <h3>Model Not Found</h3>
+                    <p>Download the model: <code>ollama pull gemma2:27b</code></p>
+
+                    <h3>Ollama Not Running</h3>
+                    <p>Start Ollama: <code>ollama serve</code></p>
+
+                    <h3>Slow Responses</h3>
+                    <p>The Gemma 27B model requires significant RAM (~16GB+). Consider using a smaller model if performance is an issue.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Check status and update URLs
+        async function init() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                // Update status indicators
+                document.getElementById('serverStatus').className = 'status-dot ' +
+                    (data.harvey?.status === 'online' ? 'online' : 'offline');
+                document.getElementById('ollamaStatus').className = 'status-dot ' +
+                    (data.ollama?.status === 'online' ? 'online' : 'offline');
+                document.getElementById('modelStatus').className = 'status-dot ' +
+                    (data.model?.available ? 'online' : 'warning');
+
+            } catch (error) {
+                console.error('Status check failed:', error);
+            }
+
+            // Set network URL
+            document.getElementById('networkUrl').textContent =
+                `http://${window.location.hostname}:3847`;
+            document.getElementById('localUrl').textContent =
+                `http://localhost:3847`;
+        }
+
+        init();
+    </script>
+</body>
+</html>

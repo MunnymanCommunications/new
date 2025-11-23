@@ -1,29 +1,270 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Voice Assistant</title>
-<script type="importmap">
-{
-  "imports": {
-    "vite": "https://aistudiocdn.com/vite@^7.2.0",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.79.0",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
-    "ogl": "https://aistudiocdn.com/ogl@^1.0.11",
-    "@supabase/auth-ui-react": "https://aistudiocdn.com/@supabase/auth-ui-react@^0.4.7",
-    "@supabase/auth-ui-shared": "https://aistudiocdn.com/@supabase/auth-ui-shared@^0.1.8",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/"
-  }
-}
-</script>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harvey - Local AI Gift Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px;
+            max-width: 900px;
+        }
+
+        .logo {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #a0a0a0;
+            margin-bottom: 15px;
+        }
+
+        .acronym {
+            font-size: 0.9em;
+            color: #7b2cbf;
+            margin-bottom: 40px;
+            font-style: italic;
+        }
+
+        .description {
+            font-size: 1.1em;
+            color: #c0c0c0;
+            margin-bottom: 50px;
+            line-height: 1.6;
+        }
+
+        .os-selection {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .os-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 40px 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 200px;
+        }
+
+        .os-card:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #00d4ff;
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 212, 255, 0.3);
+        }
+
+        .os-card .icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+
+        .os-card h3 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        .os-card p {
+            color: #a0a0a0;
+            font-size: 0.9em;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 50px;
+            text-align: left;
+        }
+
+        .feature {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .feature h4 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .feature p {
+            color: #a0a0a0;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        .footer {
+            margin-top: 60px;
+            color: #606060;
+            font-size: 0.9em;
+        }
+
+        .already-running {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .already-running a {
+            color: #00d4ff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .already-running a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="./src/main.tsx"></script>
-  </body>
+<body>
+    <div class="container">
+        <div class="logo">🤖</div>
+        <h1>HARVEY</h1>
+        <p class="subtitle">Local AI Gift Hub Depot</p>
+        <p class="acronym">
+            <strong>H</strong>elpful <strong>A</strong>ssistant <strong>R</strong>eady to <strong>V</strong>irtually <strong>E</strong>xcel <strong>Y</strong>ou
+        </p>
+
+        <p class="description">
+            A self-contained, portable AI assistant that runs entirely on your local machine.
+            Download once, run anywhere - no internet required after setup.
+            Powered by Google Gemma 27B and accessible via web interface, API, or WebSocket.
+        </p>
+
+        <h2 style="margin-bottom: 30px; color: #00d4ff;">Select Your Operating System</h2>
+
+        <div class="os-selection">
+            <div class="os-card" onclick="downloadSetup('windows')">
+                <div class="icon">🪟</div>
+                <h3>Windows</h3>
+                <p>Windows 10/11</p>
+                <p style="margin-top: 10px; color: #00d4ff;">setup-windows.bat</p>
+            </div>
+
+            <div class="os-card" onclick="downloadSetup('mac')">
+                <div class="icon">🍎</div>
+                <h3>macOS</h3>
+                <p>macOS 12+</p>
+                <p style="margin-top: 10px; color: #00d4ff;">setup-mac.sh</p>
+            </div>
+
+            <div class="os-card" onclick="downloadSetup('linux')">
+                <div class="icon">🐧</div>
+                <h3>Linux</h3>
+                <p>Ubuntu/Debian/Fedora</p>
+                <p style="margin-top: 10px; color: #00d4ff;">setup-linux.sh</p>
+            </div>
+        </div>
+
+        <div class="already-running">
+            <p>Already have Harvey installed and running?</p>
+            <a href="client/index.html">Open Harvey Dashboard →</a>
+            &nbsp;|&nbsp;
+            <a href="client/instructions.html">View Connection Instructions →</a>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <h4>🔒 Fully Local & Private</h4>
+                <p>All processing happens on your machine. Your data never leaves your computer after initial model download.</p>
+            </div>
+            <div class="feature">
+                <h4>📦 Self-Contained</h4>
+                <p>Automatically downloads Ollama, Gemma 27B model, and all dependencies. No manual configuration needed.</p>
+            </div>
+            <div class="feature">
+                <h4>🌐 Network Accessible</h4>
+                <p>Access Harvey from any device on your network via REST API, WebSocket, or the built-in web interface.</p>
+            </div>
+            <div class="feature">
+                <h4>🔑 Secure Connection</h4>
+                <p>Password-protected endpoints ensure only authorized users can access your AI assistant.</p>
+            </div>
+            <div class="feature">
+                <h4>💾 Portable</h4>
+                <p>Copy to a flash drive and run on any compatible computer. Take your AI assistant anywhere.</p>
+            </div>
+            <div class="feature">
+                <h4>🎯 Master Prompt System</h4>
+                <p>Customizable system prompt ensures consistent, helpful responses tailored to your needs.</p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Harvey Local AI Gift Hub - Version 1.0.0</p>
+            <p style="margin-top: 10px;">Powered by Ollama + Google Gemma 27B</p>
+        </div>
+    </div>
+
+    <script>
+        function downloadSetup(os) {
+            const files = {
+                'windows': 'scripts/setup-windows.bat',
+                'mac': 'scripts/setup-mac.sh',
+                'linux': 'scripts/setup-linux.sh'
+            };
+
+            const instructions = {
+                'windows': 'Right-click the downloaded file and select "Run as administrator"',
+                'mac': 'Open Terminal, navigate to download folder, run: chmod +x setup-mac.sh && ./setup-mac.sh',
+                'linux': 'Open Terminal, navigate to download folder, run: chmod +x setup-linux.sh && ./setup-linux.sh'
+            };
+
+            // Create download link
+            const link = document.createElement('a');
+            link.href = files[os];
+            link.download = files[os].split('/').pop();
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Show instructions
+            alert(`Download started!\n\n${instructions[os]}\n\nThe setup will:\n1. Install Ollama (if not present)\n2. Download Gemma 27B model (~16GB)\n3. Install Node.js dependencies\n4. Start the Harvey server\n\nOnce complete, open http://localhost:3847 in your browser.`);
+        }
+    </script>
+</body>
 </html>
