@@ -23,6 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 
+# Build artifacts
+*.tsbuildinfo
+vite.config.d.ts
+vite.config.js
+
 # Environment
 .env
 .env.local
