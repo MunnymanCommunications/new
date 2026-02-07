@@ -1,20 +1,41 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# VibeCraft - AI App Builder Platform
 
-# Run and deploy your AI Studio app
+A full-stack AI-powered web application builder that transforms natural language prompts into production-ready React applications.
 
-This contains everything you need to run your app locally.
+## Tech Stack
 
-View your app in AI Studio: https://ai.studio/apps/drive/12Mn9N0jq4qy8kFKnz1ot4L3MZzCc_Nnr
+- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui
+- **State:** Zustand, TanStack Query
+- **AI:** Anthropic Claude API (streaming)
+- **Backend:** Supabase (PostgreSQL, Auth, Edge Functions)
+- **Version Control:** GitHub API two-way sync
+- **Deployment:** Vercel / Netlify one-click deploy
 
-## Run Locally
+## Quick Start
 
-**Prerequisites:**  Node.js
+```bash
+npm install
+npm run dev
+```
 
+## Environment Variables
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Copy `.env.example` to `.env` and fill in your keys:
+
+```
+VITE_ANTHROPIC_API_KEY=your_key
+VITE_SUPABASE_URL=your_url
+VITE_SUPABASE_ANON_KEY=your_key
+VITE_GITHUB_TOKEN=your_token
+```
+
+## Features
+
+- Split-panel layout: Chat (35%) + Live Preview (65%)
+- Conversational AI code generation with streaming responses
+- Live preview with responsive device switching
+- Visual editor with property inspector
+- Virtual file system and code viewer
+- Supabase, GitHub, and deployment integrations
+- Credit-based usage system
+- Dark mode with glassmorphism design

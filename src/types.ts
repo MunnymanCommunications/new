@@ -1,67 +1,101 @@
-import {
-    PERSONALITY_TRAITS_DEFINITIONS,
-    ATTITUDE_OPTIONS_DEFINITIONS,
-    VOICE_SETTINGS_DEFINITIONS,
-} from './definitions.ts';
-
-export type VoiceOption = typeof VOICE_SETTINGS_DEFINITIONS[number]['value'];
-export type PersonalityTrait = typeof PERSONALITY_TRAITS_DEFINITIONS[number];
-export type AttitudeOption = typeof ATTITUDE_OPTIONS_DEFINITIONS[number];
-
-export type ConversationStatus = 'IDLE' | 'CONNECTING' | 'ACTIVE' | 'ERROR';
-
-export interface Assistant {
+export interface Project {
   id: string;
-  user_id: string;
   name: string;
-  avatar: string;
-  personality: PersonalityTrait[];
-  attitude: AttitudeOption;
-  voice: VoiceOption;
-  prompt: string;
-  created_at: string;
-  knowledge_base?: string;
-  is_public?: boolean;
-  description?: string;
-  author_name?: string;
-  orb_hue?: number;
+  description: string;
+  createdAt: Date;
+  updatedAt: Date;
+  files: ProjectFile[];
+  settings: ProjectSettings;
+  status: 'active' | 'archived' | 'deploying';
 }
 
-export interface MemoryItem {
-  id: number;
-  assistant_id: string;
-  user_id: string;
+export interface ProjectFile {
+  path: string;
   content: string;
-  created_at: string;
+  language: string;
+  lastModified: Date;
 }
 
-export interface HistoryEntry {
-  user: string;
-  assistant: string;
-  timestamp: string;
+export interface ProjectSettings {
+  framework: 'react' | 'next' | 'vue';
+  styling: 'tailwind' | 'css-modules' | 'styled-components';
+  typescript: boolean;
+  supabaseConnected: boolean;
+  githubConnected: boolean;
+  deploymentProvider: 'vercel' | 'netlify' | null;
 }
 
-export interface Profile {
-  id: string; // user_id
-  role: 'admin' | 'user';
-  email?: string;
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: Date;
+  mode: 'build' | 'chat';
+  creditCost?: number;
+  filesChanged?: FileChange[];
+  isStreaming?: boolean;
+  thinkingContent?: string;
 }
 
-export interface AppLog {
-  id: number;
-  created_at: string;
-  user_id: string;
-  assistant_id: string;
-  event_type: 'SESSION_START' | 'SESSION_END' | 'API_ERROR';
-  metadata?: {
-    duration_ms?: number;
-    error_message?: string;
+export interface FileChange {
+  path: string;
+  action: 'create' | 'modify' | 'delete';
+  diff?: string;
+}
+
+export interface CreditInfo {
+  remaining: number;
+  total: number;
+  plan: 'free' | 'pro' | 'business';
+  resetDate: Date;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  avatar?: string;
+  credits: CreditInfo;
+  plan: 'free' | 'pro' | 'business';
+}
+
+export type DeviceType = 'mobile' | 'tablet' | 'desktop';
+
+export interface DevicePreset {
+  name: string;
+  type: DeviceType;
+  width: number;
+  height: number;
+}
+
+export interface EditorState {
+  selectedElement: string | null;
+  hoveredElement: string | null;
+  isVisualEditMode: boolean;
+  inspectorOpen: boolean;
+}
+
+export interface DeploymentConfig {
+  provider: 'vercel' | 'netlify' | 'custom';
+  customDomain?: string;
+  envVars: Record<string, string>;
+  buildCommand: string;
+  outputDirectory: string;
+  status: 'idle' | 'building' | 'deploying' | 'live' | 'error';
+  url?: string;
+}
+
+export interface IntegrationStatus {
+  supabase: {
+    connected: boolean;
+    projectId?: string;
+    projectName?: string;
   };
-  // For joining data
-  profiles?: { email: string };
-  assistants?: { name: string };
+  github: {
+    connected: boolean;
+    repoUrl?: string;
+    branch?: string;
+    lastSync?: Date;
+  };
+  deployment: DeploymentConfig | null;
 }
-
-export type AssistantPage = 'conversation' | 'memory' | 'history' | 'settings';
-export type DashboardPage = 'dashboard' | 'community' | 'admin';
-export type Page = AssistantPage | DashboardPage;
