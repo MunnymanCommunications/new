@@ -78,11 +78,20 @@ export default function DashboardPage() {
                                 Admin Panel
                             </a>
                         )}
+                        <a href="#/estimator" className="bg-blue-600 hover:bg-blue-700 text-on-brand font-bold py-2 px-4 rounded-full flex items-center transition-all duration-300">
+                            <Icon name="settings" className="w-5 h-5 mr-2" />
+                            Estimator
+                        </a>
                         <button onClick={handleLogout} className="bg-base-light hover:bg-base-medium text-text-primary font-bold py-2 px-4 rounded-full dark:bg-dark-base-medium dark:hover:bg-dark-border-color dark:text-dark-text-primary">Logout</button>
                     </div>
                 </header>
-            
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <a href="#/estimator" className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-blue-300 bg-blue-50/50 rounded-2xl text-blue-600 hover:bg-blue-100/50 hover:border-blue-500 transition-all duration-300 min-h-[200px] dark:border-blue-800 dark:text-blue-400 dark:bg-blue-900/20 dark:hover:bg-blue-900/30">
+                        <Icon name="settings" className="w-10 h-10 mb-2"/>
+                        <span className="font-semibold">AI Construction Estimator</span>
+                        <span className="text-sm mt-1 text-blue-500 dark:text-blue-400">Upload floor plans &middot; Get material lists</span>
+                    </a>
                     <a href="#/assistant/new" className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-base-medium rounded-2xl text-text-secondary hover:bg-base-light hover:border-brand-secondary-glow transition-all duration-300 min-h-[200px] dark:border-dark-border-color dark:text-dark-text-secondary dark:hover:bg-dark-base-medium">
                         <Icon name="plus" className="w-10 h-10 mb-2"/>
                         <span className="font-semibold">Create New Assistant</span>

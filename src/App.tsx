@@ -10,6 +10,7 @@ import CommunityPage from './pages/CommunityPage.tsx';
 import AdminPage from './pages/AdminPage.tsx';
 import { Icon } from './components/Icon.tsx';
 import SettingsPage from './pages/SettingsPage.tsx';
+import { EstimatorPage } from './ace/pages/EstimatorPage.tsx';
 
 const parseHash = () => {
     const hash = window.location.hash;
@@ -17,6 +18,7 @@ const parseHash = () => {
     if (hash === '#/auth') return { path: 'auth' };
     if (hash === '#/community') return { path: 'community' };
     if (hash === '#/admin') return { path: 'admin' };
+    if (hash === '#/estimator') return { path: 'estimator' };
     if (hash === '#/assistant/new') return { path: 'new_assistant' };
     
     const assistantMatch = hash.match(/^#\/assistant\/(.+)$/);
@@ -107,6 +109,8 @@ export default function App() {
             return <CommunityPage />;
         case 'admin':
             return <AdminPage />;
+        case 'estimator':
+            return <EstimatorPage />;
         default:
             window.location.hash = '#/';
             return <DashboardPage />;
