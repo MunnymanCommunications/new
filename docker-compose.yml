@@ -1,0 +1,63 @@
+# VibeCraft - Full Stack with Supabase
+# Use this for local development or Coolify deployment reference
+
+services:
+  # VibeCraft Application (Frontend + API)
+  vibecraft:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - SUPABASE_URL=http://supabase-kong:8000
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - VITE_SUPABASE_URL=http://localhost:8000
+      - VITE_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - VITE_API_URL=http://localhost:3001
+    depends_on:
+      - supabase-db
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  supabase-db:
+    image: supabase/postgres:15.6.1.143
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-your-super-secret-password}
+      POSTGRES_DB: postgres
+    volumes:
+      - supabase-db-data:/var/lib/postgresql/data
+      - ./supabase/migrations:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+
+volumes:
+  supabase-db-data:
+
+# NOTE FOR COOLIFY:
+# -----------------
+# In Coolify, you typically deploy these as separate services:
+#
+# 1. Deploy Supabase using Coolify's built-in Supabase template
+#    (or use an external Supabase instance at supabase.com)
+#
+# 2. Deploy VibeCraft as a Dockerfile-based service:
+#    - Set the environment variables in Coolify's UI
+#    - Point SUPABASE_URL to your Supabase instance
+#    - Set your ANTHROPIC_API_KEY
+#    - Coolify handles SSL/domains automatically
+#
+# 3. Run the migration SQL (supabase/migrations/00001_initial_schema.sql)
+#    in your Supabase SQL Editor
+#
+# Required environment variables for VibeCraft service:
+#   SUPABASE_URL          - Your Supabase URL (internal or external)
+#   SUPABASE_ANON_KEY     - Supabase anon/public key
+#   SUPABASE_SERVICE_ROLE_KEY - Supabase service role key (server-side only)
+#   ANTHROPIC_API_KEY     - Your Anthropic API key
+#   VITE_SUPABASE_URL     - Same Supabase URL (for frontend build)
+#   VITE_SUPABASE_ANON_KEY - Same anon key (for frontend build)
+#   VITE_API_URL          - URL of this app (for frontend API calls)
