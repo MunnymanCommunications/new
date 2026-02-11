@@ -1,8 +1,9 @@
 // =============================================================================
 // ACE State Management - React hooks-based store for project state
+// Includes auto-save on pipeline completion and project history loading.
 // =============================================================================
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type {
   ACEProject, PDFPageData, DigitalTwin, MaterialList,
   Clarification, AuditEntry, PipelineState, ProjectStatus,
@@ -12,12 +13,20 @@ import { AgentOrchestrator, OrchestratorCallbacks } from '../agents/AgentOrchest
 import { VerificationIssue } from '../agents/EstimatorAgent';
 import { computeMaterialList } from '../computation';
 import { resolveContractorClarification } from '../agents/ClarificationAgent';
+import {
+  saveProjectToSupabase,
+  loadProjectsFromSupabase,
+  deleteProjectFromSupabase,
+} from './persistence';
 
 export interface ACEStore {
   // Project state
   project: ACEProject | null;
+  savedProjects: ACEProject[];
   pipelineState: PipelineState;
   isProcessing: boolean;
+  isSaving: boolean;
+  isLoadingHistory: boolean;
   verificationResult: { passed: boolean; issues: VerificationIssue[]; summary: string } | null;
 
   // Actions
@@ -26,6 +35,10 @@ export interface ACEStore {
   updateTwinMeasurement: (noteId: string, elementType: string, elementId: string, field: string, originalValue: string, correctedValue: string) => void;
   answerClarification: (clarificationId: string, answer: string) => void;
   recomputeMaterials: () => void;
+  saveProject: () => Promise<void>;
+  loadSavedProjects: () => Promise<void>;
+  loadProject: (project: ACEProject) => void;
+  deleteProject: (projectId: string) => Promise<void>;
   resetProject: () => void;
 }
 
@@ -40,8 +53,11 @@ const INITIAL_PIPELINE_STATE: PipelineState = {
 
 export function useACEStore(): ACEStore {
   const [project, setProject] = useState<ACEProject | null>(null);
+  const [savedProjects, setSavedProjects] = useState<ACEProject[]>([]);
   const [pipelineState, setPipelineState] = useState<PipelineState>(INITIAL_PIPELINE_STATE);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [verificationResult, setVerificationResult] = useState<{
     passed: boolean;
     issues: VerificationIssue[];
@@ -49,6 +65,12 @@ export function useACEStore(): ACEStore {
   } | null>(null);
 
   const orchestratorRef = useRef<AgentOrchestrator | null>(null);
+  const projectRef = useRef<ACEProject | null>(null);
+
+  // Keep projectRef in sync for use inside callbacks
+  useEffect(() => {
+    projectRef.current = project;
+  }, [project]);
 
   const startPipeline = useCallback(async (file: File, apiKey: string, projectName?: string) => {
     setIsProcessing(true);
@@ -109,6 +131,20 @@ export function useACEStore(): ACEStore {
 
     try {
       await orchestrator.runFullPipeline(file);
+
+      // Auto-save on pipeline completion
+      // Use a slight delay to ensure state is fully updated
+      setTimeout(async () => {
+        const currentProject = projectRef.current;
+        if (currentProject && currentProject.status === 'complete') {
+          setIsSaving(true);
+          try {
+            await saveProjectToSupabase(currentProject);
+          } finally {
+            setIsSaving(false);
+          }
+        }
+      }, 500);
     } finally {
       setIsProcessing(false);
       orchestratorRef.current = null;
@@ -147,7 +183,6 @@ export function useACEStore(): ACEStore {
       };
 
       // Apply correction to the actual building data
-      // Find and update the element in the digital twin
       const building = { ...updatedTwin.building };
       building.floors = building.floors.map(floor => {
         if (elementType === 'wall') {
@@ -237,6 +272,53 @@ export function useACEStore(): ACEStore {
     });
   }, []);
 
+  const saveProject = useCallback(async () => {
+    const currentProject = projectRef.current;
+    if (!currentProject) return;
+
+    setIsSaving(true);
+    try {
+      await saveProjectToSupabase(currentProject);
+    } finally {
+      setIsSaving(false);
+    }
+  }, []);
+
+  const loadSavedProjects = useCallback(async () => {
+    setIsLoadingHistory(true);
+    try {
+      const projects = await loadProjectsFromSupabase();
+      setSavedProjects(projects);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, []);
+
+  const loadProject = useCallback((savedProject: ACEProject) => {
+    setProject(savedProject);
+    setPipelineState({
+      currentPhase: savedProject.status,
+      progress: 100,
+      currentAgent: null,
+      currentPage: null,
+      totalPages: savedProject.pdf_pages.length,
+      messages: [{
+        timestamp: new Date().toISOString(),
+        level: 'info',
+        message: `Loaded saved project: ${savedProject.name}`,
+        agent: null,
+      }],
+    });
+    setVerificationResult(null);
+  }, []);
+
+  const deleteProject = useCallback(async (projectId: string) => {
+    await deleteProjectFromSupabase(projectId);
+    setSavedProjects(prev => prev.filter(p => p.id !== projectId));
+    // If the deleted project is currently loaded, clear it
+    setProject(prev => prev?.id === projectId ? null : prev);
+  }, []);
+
   const resetProject = useCallback(() => {
     orchestratorRef.current?.abort();
     setProject(null);
@@ -247,14 +329,21 @@ export function useACEStore(): ACEStore {
 
   return {
     project,
+    savedProjects,
     pipelineState,
     isProcessing,
+    isSaving,
+    isLoadingHistory,
     verificationResult,
     startPipeline,
     abortPipeline,
     updateTwinMeasurement,
     answerClarification,
     recomputeMaterials,
+    saveProject,
+    loadSavedProjects,
+    loadProject,
+    deleteProject,
     resetProject,
   };
 }

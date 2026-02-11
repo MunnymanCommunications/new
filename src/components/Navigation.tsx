@@ -104,6 +104,7 @@ export const Navigation: React.FC<NavigationProps> = ({
 
         <ul className="space-y-2 flex-grow">
             <NavItem icon="dashboard" label="Dashboard" isActive={currentPage === 'dashboard'} onClick={() => window.location.hash = '#/'} isCollapsed={isCollapsed} />
+            <NavItem icon="settings" label="Estimator" isActive={window.location.hash === '#/estimator'} onClick={() => window.location.hash = '#/estimator'} isCollapsed={isCollapsed} />
             <NavItem icon="users" label="Community" isActive={currentPage === 'community'} onClick={() => window.location.hash = '#/community'} isCollapsed={isCollapsed} />
             {mode === 'assistant' && (
               <>

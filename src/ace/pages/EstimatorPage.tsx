@@ -13,6 +13,7 @@ import { MeasurementEditor } from '../components/MeasurementEditor';
 import { ClarificationPanel } from '../components/ClarificationPanel';
 import { MaterialListView } from '../components/MaterialListView';
 import { AuditTrail } from '../components/AuditTrail';
+import { ProjectHistory } from '../components/ProjectHistory';
 
 type Tab = 'overview' | 'pages' | 'twin' | 'measurements' | 'clarifications' | 'materials' | 'audit';
 
@@ -57,15 +58,38 @@ export function EstimatorPage() {
       <div className="bg-white dark:bg-dark-base-medium border-b border-border-color dark:border-dark-border-color">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-text-primary dark:text-dark-text-primary">
-                AI Construction Estimator
-              </h1>
-              <p className="text-sm text-text-secondary dark:text-dark-text-secondary">
-                Upload floor plans &middot; AI-powered analysis &middot; Precise material estimation
-              </p>
+            <div className="flex items-center gap-4">
+              <a
+                href="#/"
+                className="p-2 text-text-tertiary dark:text-dark-text-tertiary hover:text-text-primary dark:hover:text-dark-text-primary hover:bg-gray-100 dark:hover:bg-dark-base-light rounded-lg transition-colors"
+                title="Back to Dashboard"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+              </a>
+              <div>
+                <h1 className="text-2xl font-bold text-text-primary dark:text-dark-text-primary">
+                  AI Construction Estimator
+                </h1>
+                <p className="text-sm text-text-secondary dark:text-dark-text-secondary">
+                  Upload floor plans &middot; AI-powered analysis &middot; Precise material estimation
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-3">
+              {hasProject && store.isSaving && (
+                <span className="text-xs text-blue-500 animate-pulse">Saving...</span>
+              )}
+              {hasProject && !store.isProcessing && (
+                <button
+                  onClick={store.saveProject}
+                  disabled={store.isSaving}
+                  className="px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Save
+                </button>
+              )}
               {hasProject && (
                 <span className="text-sm text-text-tertiary dark:text-dark-text-tertiary">
                   {store.project?.name}
@@ -182,6 +206,15 @@ export function EstimatorPage() {
                 description="Review and correct measurements before computing. Level 1 AI and Level 2 contractor clarification system."
               />
             </div>
+
+            {/* Saved project history */}
+            <ProjectHistory
+              projects={store.savedProjects}
+              isLoading={store.isLoadingHistory}
+              onLoad={store.loadSavedProjects}
+              onSelect={store.loadProject}
+              onDelete={store.deleteProject}
+            />
           </div>
         )}
 
