@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useChatStore } from '@/stores/chat';
+import { useAuthStore } from '@/stores/auth';
 
 interface SettingsPageProps {
   onBack: () => void;
@@ -69,7 +69,11 @@ const PLANS = [
 ];
 
 export function SettingsPage({ onBack }: SettingsPageProps) {
-  const { credits } = useChatStore();
+  const { profile, user } = useAuthStore();
+
+  const creditsRemaining = profile?.credits_remaining ?? 0;
+  const creditsTotal = profile?.credits_total ?? 100;
+  const plan = profile?.plan ?? 'free';
 
   return (
     <div className="h-[calc(100vh-3.5rem)] overflow-y-auto">
@@ -111,11 +115,11 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Name</label>
-                  <Input defaultValue="Demo User" />
+                  <Input defaultValue={profile?.name || ''} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Email</label>
-                  <Input defaultValue="demo@vibecraft.dev" />
+                  <Input defaultValue={user?.email || ''} disabled />
                 </div>
               </div>
               <Button size="sm">Save Changes</Button>
@@ -151,46 +155,43 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
               </h3>
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-3xl font-bold">{credits.remaining}</span>
+                  <span className="text-3xl font-bold">{creditsRemaining}</span>
                   <span className="text-muted-foreground text-sm ml-1">
-                    / {credits.total} credits
+                    / {creditsTotal} credits
                   </span>
                 </div>
-                <Badge variant="secondary">{credits.plan} plan</Badge>
+                <Badge variant="secondary">{plan} plan</Badge>
               </div>
-              <Progress value={(credits.remaining / credits.total) * 100} className="h-2" />
-              <p className="text-xs text-muted-foreground">
-                Resets on {credits.resetDate.toLocaleDateString()}
-              </p>
+              <Progress value={creditsTotal > 0 ? (creditsRemaining / creditsTotal) * 100 : 0} className="h-2" />
             </div>
 
             {/* Plans */}
             <div className="space-y-4">
               <h3 className="font-semibold">Plans</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {PLANS.map((plan) => (
+                {PLANS.map((planItem) => (
                   <div
-                    key={plan.name}
+                    key={planItem.name}
                     className={`rounded-xl border p-6 space-y-4 relative ${
-                      plan.current
+                      planItem.name.toLowerCase() === plan
                         ? 'border-primary bg-primary/5'
                         : 'border-border bg-card'
                     }`}
                   >
-                    {plan.popular && (
+                    {planItem.popular && (
                       <Badge className="absolute -top-2.5 right-4">Popular</Badge>
                     )}
                     <div>
-                      <h4 className="font-semibold text-lg">{plan.name}</h4>
+                      <h4 className="font-semibold text-lg">{planItem.name}</h4>
                       <div className="flex items-baseline gap-1 mt-1">
-                        <span className="text-3xl font-bold">{plan.price}</span>
-                        <span className="text-muted-foreground text-sm">{plan.period}</span>
+                        <span className="text-3xl font-bold">{planItem.price}</span>
+                        <span className="text-muted-foreground text-sm">{planItem.period}</span>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">{plan.credits}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{planItem.credits}</p>
                     </div>
                     <Separator />
                     <ul className="space-y-2">
-                      {plan.features.map((feature) => (
+                      {planItem.features.map((feature) => (
                         <li key={feature} className="flex items-center gap-2 text-sm">
                           <Check className="w-3.5 h-3.5 text-primary shrink-0" />
                           {feature}
@@ -198,11 +199,11 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                       ))}
                     </ul>
                     <Button
-                      variant={plan.current ? 'outline' : 'default'}
+                      variant={planItem.name.toLowerCase() === plan ? 'outline' : 'default'}
                       className="w-full"
                       size="sm"
                     >
-                      {plan.current ? 'Current Plan' : 'Upgrade'}
+                      {planItem.name.toLowerCase() === plan ? 'Current Plan' : 'Upgrade'}
                     </Button>
                   </div>
                 ))}

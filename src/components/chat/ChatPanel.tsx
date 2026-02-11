@@ -11,14 +11,11 @@ import {
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { useChatStore } from '@/stores/chat';
-import type { FileChange } from '@/types';
+import { useProjectStore } from '@/stores/project';
 
-interface ChatPanelProps {
-  onFilesChanged?: (changes: FileChange[]) => void;
-}
-
-export function ChatPanel({ onFilesChanged }: ChatPanelProps) {
+export function ChatPanel() {
   const { messages, sendMessage, clearMessages, isStreaming } = useChatStore();
+  const { currentProjectId, files } = useProjectStore();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -31,7 +28,8 @@ export function ChatPanel({ onFilesChanged }: ChatPanelProps) {
   }, [messages]);
 
   const handleSend = (content: string) => {
-    sendMessage(content, onFilesChanged);
+    if (!currentProjectId) return;
+    sendMessage(content, currentProjectId, files);
   };
 
   return (
@@ -94,7 +92,7 @@ export function ChatPanel({ onFilesChanged }: ChatPanelProps) {
       </ScrollArea>
 
       {/* Input */}
-      <ChatInput onSend={handleSend} disabled={isStreaming} />
+      <ChatInput onSend={handleSend} disabled={isStreaming || !currentProjectId} />
     </div>
   );
 }

@@ -9,12 +9,11 @@ import { useEditorStore } from '@/stores/editor';
 import { getFileLanguage } from '@/lib/file-system';
 
 export function CodeEditor() {
-  const { currentProjectId, projects } = useProjectStore();
+  const { files } = useProjectStore();
   const { activeFile } = useEditorStore();
   const [copied, setCopied] = React.useState(false);
 
-  const currentProject = projects.find((p) => p.id === currentProjectId);
-  const file = currentProject?.files.find((f) => f.path === activeFile);
+  const file = files.find((f) => f.path === activeFile);
 
   if (!file) {
     return (

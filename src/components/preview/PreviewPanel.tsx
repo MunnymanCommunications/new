@@ -44,8 +44,7 @@ export function PreviewPanel() {
     clearConsoleLogs,
   } = useEditorStore();
 
-  const { currentProjectId, projects } = useProjectStore();
-  const currentProject = projects.find((p) => p.id === currentProjectId);
+  const { files } = useProjectStore();
 
   const deviceWidths: Record<DeviceType, number> = {
     mobile: 375,
@@ -81,7 +80,7 @@ export function PreviewPanel() {
     return () => window.removeEventListener('message', handleMessage);
   }, [handleMessage]);
 
-  const previewHTML = currentProject ? generatePreviewHTML(currentProject.files) : '';
+  const previewHTML = files.length > 0 ? generatePreviewHTML(files) : '';
 
   const refreshPreview = () => {
     setPreviewError(null);

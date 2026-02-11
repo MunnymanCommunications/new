@@ -1,22 +1,30 @@
 import React, { useState } from 'react';
-import { Zap, Mail, Lock, User, ArrowRight, Github } from 'lucide-react';
+import { Zap, Mail, Lock, User, ArrowRight, Github, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { useAuthStore } from '@/stores/auth';
 
-interface AuthPageProps {
-  onAuth: () => void;
-}
-
-export function AuthPage({ onAuth }: AuthPageProps) {
+export function AuthPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { signIn, signUp, signInWithOAuth, loading } = useAuthStore();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onAuth();
+    setError(null);
+
+    if (isSignUp) {
+      const result = await signUp(email, password, name || undefined);
+      if (result.error) setError(result.error);
+    } else {
+      const result = await signIn(email, password);
+      if (result.error) setError(result.error);
+    }
   };
 
   return (
@@ -42,11 +50,21 @@ export function AuthPage({ onAuth }: AuthPageProps) {
           </div>
 
           <div className="space-y-4">
-            <Button variant="outline" className="w-full gap-2 h-11" onClick={onAuth}>
+            <Button
+              variant="outline"
+              className="w-full gap-2 h-11"
+              onClick={() => signInWithOAuth('github')}
+              disabled={loading}
+            >
               <Github className="w-4 h-4" />
               Continue with GitHub
             </Button>
-            <Button variant="outline" className="w-full gap-2 h-11" onClick={onAuth}>
+            <Button
+              variant="outline"
+              className="w-full gap-2 h-11"
+              onClick={() => signInWithOAuth('google')}
+              disabled={loading}
+            >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
@@ -76,6 +94,12 @@ export function AuthPage({ onAuth }: AuthPageProps) {
             </span>
           </div>
 
+          {error && (
+            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
               <div className="relative">
@@ -96,6 +120,7 @@ export function AuthPage({ onAuth }: AuthPageProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-10 h-11"
+                required
               />
             </div>
             <div className="relative">
@@ -106,18 +131,29 @@ export function AuthPage({ onAuth }: AuthPageProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pl-10 h-11"
+                required
+                minLength={6}
               />
             </div>
-            <Button type="submit" className="w-full h-11 gap-2">
-              {isSignUp ? 'Create Account' : 'Sign In'}
-              <ArrowRight className="w-4 h-4" />
+            <Button type="submit" className="w-full h-11 gap-2" disabled={loading}>
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  {isSignUp ? 'Create Account' : 'Sign In'}
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </Button>
           </form>
 
           <p className="text-center text-sm text-muted-foreground">
             {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
             <button
-              onClick={() => setIsSignUp(!isSignUp)}
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError(null);
+              }}
               className="text-primary hover:underline font-medium"
             >
               {isSignUp ? 'Sign in' : 'Sign up'}
@@ -138,7 +174,7 @@ export function AuthPage({ onAuth }: AuthPageProps) {
             {[
               'Full-stack app generation from prompts',
               'Live preview with instant updates',
-              'Visual editor for point-and-click editing',
+              'AI-powered database creation',
               'One-click deployment to production',
             ].map((feature) => (
               <div key={feature} className="flex items-center gap-3">

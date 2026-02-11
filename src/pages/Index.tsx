@@ -5,18 +5,19 @@ import { PreviewPanel } from '@/components/preview/PreviewPanel';
 import { FileTree } from '@/components/editor/FileTree';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { VisualEditor } from '@/components/editor/VisualEditor';
+import { DatabaseExplorer } from '@/components/editor/DatabaseExplorer';
 import { useEditorStore } from '@/stores/editor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare, Code, FolderTree } from 'lucide-react';
+import { MessageSquare, Code, FolderTree, Database } from 'lucide-react';
 
 export function IndexPage() {
-  const { isVisualEditMode, fileTreeOpen } = useEditorStore();
+  const { isVisualEditMode } = useEditorStore();
   const [activeTab, setActiveTab] = React.useState('chat');
 
   return (
     <div className="h-[calc(100vh-3.5rem)] flex">
       <PanelGroup direction="horizontal" className="flex-1">
-        {/* Left Panel: Chat + File Tree + Code Editor */}
+        {/* Left Panel: Chat + File Tree + Code Editor + Database */}
         <Panel defaultSize={35} minSize={25} maxSize={50}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
             <TabsList className="mx-2 mt-1 mb-0 h-9 bg-secondary/30">
@@ -31,6 +32,10 @@ export function IndexPage() {
               <TabsTrigger value="files" className="gap-1.5 text-xs">
                 <FolderTree className="w-3.5 h-3.5" />
                 Files
+              </TabsTrigger>
+              <TabsTrigger value="database" className="gap-1.5 text-xs">
+                <Database className="w-3.5 h-3.5" />
+                DB
               </TabsTrigger>
             </TabsList>
 
@@ -51,6 +56,10 @@ export function IndexPage() {
 
             <TabsContent value="files" className="flex-1 mt-0 overflow-hidden">
               <FileTree />
+            </TabsContent>
+
+            <TabsContent value="database" className="flex-1 mt-0 overflow-hidden">
+              <DatabaseExplorer />
             </TabsContent>
           </Tabs>
         </Panel>

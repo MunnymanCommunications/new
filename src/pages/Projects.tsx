@@ -31,7 +31,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { useProjectStore } from '@/stores/project';
-import { formatDate } from '@/lib/utils';
 
 interface ProjectsPageProps {
   onOpenProject: (id: string) => void;
@@ -64,20 +63,30 @@ const TEMPLATES = [
   },
 ];
 
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 export function ProjectsPage({ onOpenProject }: ProjectsPageProps) {
   const { projects, createProject, deleteProject, setCurrentProject } = useProjectStore();
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (newProjectName.trim()) {
-      const id = createProject(newProjectName.trim(), newProjectDesc);
+      const id = await createProject(newProjectName.trim(), newProjectDesc);
       setNewProjectName('');
       setNewProjectDesc('');
       setShowNewProject(false);
-      onOpenProject(id);
+      if (id) onOpenProject(id);
     }
+  };
+
+  const handleTemplateCreate = async (name: string, description: string) => {
+    const id = await createProject(name, description);
+    if (id) onOpenProject(id);
   };
 
   const handleOpenProject = (id: string) => {
@@ -110,10 +119,7 @@ export function ProjectsPage({ onOpenProject }: ProjectsPageProps) {
             {TEMPLATES.map((template) => (
               <button
                 key={template.name}
-                onClick={() => {
-                  const id = createProject(template.name, template.description);
-                  onOpenProject(id);
-                }}
+                onClick={() => handleTemplateCreate(template.name, template.description)}
                 className="group relative p-6 rounded-xl border border-border bg-card hover:border-primary/50 transition-all text-left overflow-hidden"
               >
                 <div
@@ -195,11 +201,8 @@ export function ProjectsPage({ onOpenProject }: ProjectsPageProps) {
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {formatDate(project.updatedAt)}
+                      {formatDate(project.updated_at)}
                     </span>
-                    <Badge variant="outline" className="text-[10px]">
-                      {project.files.length} files
-                    </Badge>
                     <Badge
                       variant={project.status === 'active' ? 'secondary' : 'default'}
                       className="text-[10px]"

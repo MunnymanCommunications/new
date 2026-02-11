@@ -12,9 +12,8 @@ import { useProjectStore } from '@/stores/project';
 import { useEditorStore } from '@/stores/editor';
 
 export function FileTree() {
-  const { currentProjectId, projects } = useProjectStore();
-  const currentProject = projects.find((p) => p.id === currentProjectId);
-  const tree = currentProject ? buildFileTree(currentProject.files) : [];
+  const { files } = useProjectStore();
+  const tree = buildFileTree(files);
 
   return (
     <div className="text-sm">

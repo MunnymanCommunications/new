@@ -41,23 +41,21 @@ import {
 } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
 import { useProjectStore } from '@/stores/project';
-import { useChatStore } from '@/stores/chat';
+import { useAuthStore } from '@/stores/auth';
 
 interface HeaderProps {
   onNavigate: (page: string) => void;
+  onSignOut: () => void;
 }
 
-export function Header({ onNavigate }: HeaderProps) {
+export function Header({ onNavigate, onSignOut }: HeaderProps) {
   const [darkMode, setDarkMode] = useState(true);
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
-  const [showSupabaseDialog, setShowSupabaseDialog] = useState(false);
-  const [showGitHubDialog, setShowGitHubDialog] = useState(false);
-  const [showDeployDialog, setShowDeployDialog] = useState(false);
 
-  const { projects, currentProjectId, createProject, setCurrentProject, integrations } =
+  const { projects, currentProjectId, createProject, setCurrentProject } =
     useProjectStore();
-  const { credits } = useChatStore();
+  const { profile, user } = useAuthStore();
 
   const currentProject = projects.find((p) => p.id === currentProjectId);
 
@@ -66,15 +64,18 @@ export function Header({ onNavigate }: HeaderProps) {
     document.documentElement.classList.toggle('dark');
   };
 
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
     if (newProjectName.trim()) {
-      createProject(newProjectName.trim());
+      await createProject(newProjectName.trim());
       setNewProjectName('');
       setShowNewProject(false);
     }
   };
 
-  const creditPercent = (credits.remaining / credits.total) * 100;
+  const creditsRemaining = profile?.credits_remaining ?? 0;
+  const creditsTotal = profile?.credits_total ?? 100;
+  const creditPercent = creditsTotal > 0 ? (creditsRemaining / creditsTotal) * 100 : 0;
+  const plan = profile?.plan ?? 'free';
 
   return (
     <TooltipProvider>
@@ -124,56 +125,28 @@ export function Header({ onNavigate }: HeaderProps) {
         <div className="flex items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant={integrations.supabase.connected ? 'default' : 'outline'}
-                size="sm"
-                className="gap-1.5"
-                onClick={() => setShowSupabaseDialog(true)}
-              >
+              <Button variant="outline" size="sm" className="gap-1.5">
                 <Database className="w-4 h-4" />
-                <span className="hidden md:inline">Supabase</span>
-                {integrations.supabase.connected && (
-                  <span className="w-2 h-2 rounded-full bg-green-400" />
-                )}
+                <span className="hidden md:inline">Database</span>
+                <span className="w-2 h-2 rounded-full bg-green-400" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              {integrations.supabase.connected
-                ? `Connected to ${integrations.supabase.projectName}`
-                : 'Connect Supabase'}
-            </TooltipContent>
+            <TooltipContent>Project database (auto-managed)</TooltipContent>
           </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant={integrations.github.connected ? 'default' : 'outline'}
-                size="sm"
-                className="gap-1.5"
-                onClick={() => setShowGitHubDialog(true)}
-              >
+              <Button variant="outline" size="sm" className="gap-1.5">
                 <GitBranch className="w-4 h-4" />
                 <span className="hidden md:inline">GitHub</span>
-                {integrations.github.connected && (
-                  <span className="w-2 h-2 rounded-full bg-green-400" />
-                )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              {integrations.github.connected
-                ? `Synced with ${integrations.github.branch}`
-                : 'Connect GitHub'}
-            </TooltipContent>
+            <TooltipContent>Connect GitHub</TooltipContent>
           </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => setShowDeployDialog(true)}
-              >
+              <Button variant="outline" size="sm" className="gap-1.5">
                 <Rocket className="w-4 h-4" />
                 <span className="hidden md:inline">Deploy</span>
               </Button>
@@ -188,12 +161,12 @@ export function Header({ onNavigate }: HeaderProps) {
             <TooltipTrigger asChild>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/50 cursor-pointer">
                 <Zap className="w-3.5 h-3.5 text-primary" />
-                <span className="text-sm font-medium">{credits.remaining}</span>
+                <span className="text-sm font-medium">{creditsRemaining}</span>
                 <Progress value={creditPercent} className="w-16 h-1.5" />
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              {credits.remaining} of {credits.total} credits remaining ({credits.plan} plan)
+              {creditsRemaining} of {creditsTotal} credits remaining ({plan} plan)
             </TooltipContent>
           </Tooltip>
 
@@ -212,8 +185,10 @@ export function Header({ onNavigate }: HeaderProps) {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div>
-                  <div className="font-medium">Demo User</div>
-                  <div className="text-xs text-muted-foreground">demo@vibecraft.dev</div>
+                  <div className="font-medium">{profile?.name || 'User'}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {user?.email || ''}
+                  </div>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -221,7 +196,7 @@ export function Header({ onNavigate }: HeaderProps) {
                 <CreditCard className="w-4 h-4 mr-2" />
                 Billing
                 <Badge variant="secondary" className="ml-auto text-xs">
-                  {credits.plan}
+                  {plan}
                 </Badge>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onNavigate('settings')}>
@@ -229,7 +204,7 @@ export function Header({ onNavigate }: HeaderProps) {
                 Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem className="text-destructive" onClick={onSignOut}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign Out
               </DropdownMenuItem>
@@ -261,157 +236,6 @@ export function Header({ onNavigate }: HeaderProps) {
               Create Project
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Supabase Connect Dialog */}
-      <Dialog open={showSupabaseDialog} onOpenChange={setShowSupabaseDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              <div className="flex items-center gap-2">
-                <Database className="w-5 h-5 text-green-500" />
-                Connect Supabase
-              </div>
-            </DialogTitle>
-            <DialogDescription>
-              Connect your Supabase project to enable database, auth, storage, and edge functions.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {integrations.supabase.connected ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                  <span className="w-2 h-2 rounded-full bg-green-500" />
-                  <span className="text-sm text-green-500">
-                    Connected to {integrations.supabase.projectName}
-                  </span>
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    useProjectStore.getState().disconnectSupabase();
-                    setShowSupabaseDialog(false);
-                  }}
-                >
-                  Disconnect
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Click the button below to authenticate with Supabase and select your project.
-                </p>
-                <Button
-                  className="w-full gap-2"
-                  onClick={() => {
-                    useProjectStore.getState().connectSupabase('demo-id', 'my-project');
-                    setShowSupabaseDialog(false);
-                  }}
-                >
-                  <Database className="w-4 h-4" />
-                  Connect with Supabase
-                </Button>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* GitHub Connect Dialog */}
-      <Dialog open={showGitHubDialog} onOpenChange={setShowGitHubDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              <div className="flex items-center gap-2">
-                <GitBranch className="w-5 h-5" />
-                Connect GitHub
-              </div>
-            </DialogTitle>
-            <DialogDescription>
-              Two-way sync with GitHub. Changes auto-commit and you can pull external updates.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {integrations.github.connected ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                  <span className="w-2 h-2 rounded-full bg-green-500" />
-                  <span className="text-sm text-green-500">
-                    Synced with {integrations.github.branch}
-                  </span>
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    useProjectStore.getState().disconnectGitHub();
-                    setShowGitHubDialog(false);
-                  }}
-                >
-                  Disconnect
-                </Button>
-              </div>
-            ) : (
-              <Button
-                className="w-full gap-2"
-                onClick={() => {
-                  useProjectStore.getState().connectGitHub('https://github.com/user/repo', 'main');
-                  setShowGitHubDialog(false);
-                }}
-              >
-                <GitBranch className="w-4 h-4" />
-                Connect with GitHub
-              </Button>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Deploy Dialog */}
-      <Dialog open={showDeployDialog} onOpenChange={setShowDeployDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              <div className="flex items-center gap-2">
-                <Rocket className="w-5 h-5 text-primary" />
-                Deploy Your App
-              </div>
-            </DialogTitle>
-            <DialogDescription>
-              Choose a deployment provider to publish your app to production.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-4">
-            <button className="w-full p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all text-left group">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">Vercel</div>
-                  <div className="text-sm text-muted-foreground">
-                    Automatic deployments with preview URLs
-                  </div>
-                </div>
-                <Badge variant="secondary">Recommended</Badge>
-              </div>
-            </button>
-            <button className="w-full p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all text-left group">
-              <div>
-                <div className="font-medium">Netlify</div>
-                <div className="text-sm text-muted-foreground">
-                  Deploy with continuous delivery
-                </div>
-              </div>
-            </button>
-            <button className="w-full p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-accent/50 transition-all text-left group">
-              <div>
-                <div className="font-medium">Custom Domain</div>
-                <div className="text-sm text-muted-foreground">
-                  Configure a custom domain for your app
-                </div>
-              </div>
-            </button>
-          </div>
         </DialogContent>
       </Dialog>
     </TooltipProvider>

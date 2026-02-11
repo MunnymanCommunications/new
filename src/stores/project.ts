@@ -1,6 +1,35 @@
 import { create } from 'zustand';
-import { generateId } from '@/lib/utils';
-import type { Project, ProjectFile, IntegrationStatus } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import type { ProjectFile } from '@/types';
+
+interface ProjectRow {
+  id: string;
+  name: string;
+  description: string;
+  supabase_schema: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ProjectState {
+  projects: ProjectRow[];
+  currentProjectId: string | null;
+  files: ProjectFile[];
+  loading: boolean;
+
+  currentProject: () => ProjectRow | null;
+  loadProjects: () => Promise<void>;
+  createProject: (name: string, description?: string) => Promise<string | null>;
+  deleteProject: (id: string) => Promise<void>;
+  setCurrentProject: (id: string) => Promise<void>;
+  loadFilesFromDB: (projectId: string) => Promise<void>;
+  saveFileToDB: (projectId: string, file: ProjectFile) => Promise<void>;
+  updateFile: (projectId: string, path: string, content: string) => void;
+  addFile: (projectId: string, file: ProjectFile) => void;
+  deleteFile: (projectId: string, path: string) => void;
+  getFile: (projectId: string, path: string) => ProjectFile | undefined;
+}
 
 const DEFAULT_FILES: ProjectFile[] = [
   {
@@ -20,9 +49,6 @@ export default function App() {
         <div className="flex gap-4 justify-center">
           <button className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium">
             Get Started
-          </button>
-          <button className="px-6 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium border border-gray-200">
-            Learn More
           </button>
         </div>
       </div>
@@ -55,10 +81,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }`,
     language: 'css',
     lastModified: new Date(),
@@ -71,10 +95,7 @@ body {
         private: true,
         version: '0.1.0',
         type: 'module',
-        dependencies: {
-          react: '^18.3.1',
-          'react-dom': '^18.3.1',
-        },
+        dependencies: { react: '^18.3.1', 'react-dom': '^18.3.1' },
         devDependencies: {
           '@vitejs/plugin-react': '^4.3.4',
           tailwindcss: '^3.4.16',
@@ -90,181 +111,151 @@ body {
   },
 ];
 
-interface ProjectState {
-  projects: Project[];
-  currentProjectId: string | null;
-  integrations: IntegrationStatus;
+export const useProjectStore = create<ProjectState>((set, get) => ({
+  projects: [],
+  currentProjectId: null,
+  files: [],
+  loading: false,
 
-  currentProject: () => Project | null;
-  createProject: (name: string, description?: string) => string;
-  deleteProject: (id: string) => void;
-  setCurrentProject: (id: string) => void;
-  updateFile: (projectId: string, path: string, content: string) => void;
-  addFile: (projectId: string, file: ProjectFile) => void;
-  deleteFile: (projectId: string, path: string) => void;
-  getFile: (projectId: string, path: string) => ProjectFile | undefined;
+  currentProject: () => {
+    const state = get();
+    return state.projects.find((p) => p.id === state.currentProjectId) || null;
+  },
 
-  connectSupabase: (projectId: string, projectName: string) => void;
-  disconnectSupabase: () => void;
-  connectGitHub: (repoUrl: string, branch?: string) => void;
-  disconnectGitHub: () => void;
-}
+  loadProjects: async () => {
+    set({ loading: true });
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .order('updated_at', { ascending: false });
 
-export const useProjectStore = create<ProjectState>((set, get) => {
-  const initialProjectId = generateId();
+    if (!error && data) {
+      set({ projects: data as ProjectRow[], loading: false });
+      if (data.length > 0 && !get().currentProjectId) {
+        await get().setCurrentProject(data[0].id);
+      }
+    } else {
+      set({ loading: false });
+    }
+  },
 
-  return {
-    projects: [
-      {
-        id: initialProjectId,
-        name: 'My First App',
-        description: 'A new project created with VibeCraft',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        files: DEFAULT_FILES,
-        settings: {
-          framework: 'react',
-          styling: 'tailwind',
-          typescript: true,
-          supabaseConnected: false,
-          githubConnected: false,
-          deploymentProvider: null,
-        },
-        status: 'active',
-      },
-    ],
-    currentProjectId: initialProjectId,
-    integrations: {
-      supabase: { connected: false },
-      github: { connected: false },
-      deployment: null,
-    },
+  createProject: async (name, description = '') => {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return null;
 
-    currentProject: () => {
-      const state = get();
-      return state.projects.find((p) => p.id === state.currentProjectId) || null;
-    },
-
-    createProject: (name, description = '') => {
-      const id = generateId();
-      const project: Project = {
-        id,
+    const { data, error } = await supabase
+      .from('projects')
+      .insert({
         name,
         description,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        files: [...DEFAULT_FILES.map((f) => ({ ...f, lastModified: new Date() }))],
-        settings: {
-          framework: 'react',
-          styling: 'tailwind',
-          typescript: true,
-          supabaseConnected: false,
-          githubConnected: false,
-          deploymentProvider: null,
-        },
+        user_id: userData.user.id,
         status: 'active',
-      };
-      set((state) => ({
-        projects: [...state.projects, project],
-        currentProjectId: id,
+      })
+      .select()
+      .single();
+
+    if (error || !data) return null;
+
+    const project = data as ProjectRow;
+
+    // Save default files
+    const fileRows = DEFAULT_FILES.map((f) => ({
+      project_id: project.id,
+      path: f.path,
+      content: f.content,
+      language: f.language,
+    }));
+
+    await supabase.from('project_files').insert(fileRows);
+
+    set((state) => ({
+      projects: [project, ...state.projects],
+      currentProjectId: project.id,
+      files: [...DEFAULT_FILES],
+    }));
+
+    return project.id;
+  },
+
+  deleteProject: async (id) => {
+    await supabase.from('projects').delete().eq('id', id);
+    set((state) => ({
+      projects: state.projects.filter((p) => p.id !== id),
+      currentProjectId:
+        state.currentProjectId === id
+          ? state.projects.find((p) => p.id !== id)?.id || null
+          : state.currentProjectId,
+      files: state.currentProjectId === id ? [] : state.files,
+    }));
+  },
+
+  setCurrentProject: async (id) => {
+    set({ currentProjectId: id });
+    await get().loadFilesFromDB(id);
+  },
+
+  loadFilesFromDB: async (projectId) => {
+    const { data, error } = await supabase
+      .from('project_files')
+      .select('*')
+      .eq('project_id', projectId);
+
+    if (!error && data) {
+      const files: ProjectFile[] = data.map((row: Record<string, unknown>) => ({
+        path: row.path as string,
+        content: row.content as string,
+        language: row.language as string,
+        lastModified: new Date(row.updated_at as string),
       }));
-      return id;
-    },
+      set({ files });
+    }
+  },
 
-    deleteProject: (id) => {
-      set((state) => ({
-        projects: state.projects.filter((p) => p.id !== id),
-        currentProjectId: state.currentProjectId === id ? state.projects[0]?.id || null : state.currentProjectId,
-      }));
-    },
+  saveFileToDB: async (projectId, file) => {
+    await supabase.from('project_files').upsert(
+      {
+        project_id: projectId,
+        path: file.path,
+        content: file.content,
+        language: file.language,
+      },
+      { onConflict: 'project_id,path' }
+    );
+  },
 
-    setCurrentProject: (id) => {
-      set({ currentProjectId: id });
-    },
+  updateFile: (projectId, path, content) => {
+    set((state) => ({
+      files: state.files.map((f) =>
+        f.path === path ? { ...f, content, lastModified: new Date() } : f
+      ),
+    }));
+    // Persist in background
+    const file = get().files.find((f) => f.path === path);
+    if (file) {
+      get().saveFileToDB(projectId, { ...file, content });
+    }
+  },
 
-    updateFile: (projectId, path, content) => {
-      set((state) => ({
-        projects: state.projects.map((p) =>
-          p.id === projectId
-            ? {
-                ...p,
-                updatedAt: new Date(),
-                files: p.files.map((f) =>
-                  f.path === path ? { ...f, content, lastModified: new Date() } : f
-                ),
-              }
-            : p
-        ),
-      }));
-    },
+  addFile: (projectId, file) => {
+    set((state) => ({
+      files: [...state.files.filter((f) => f.path !== file.path), file],
+    }));
+    get().saveFileToDB(projectId, file);
+  },
 
-    addFile: (projectId, file) => {
-      set((state) => ({
-        projects: state.projects.map((p) =>
-          p.id === projectId
-            ? {
-                ...p,
-                updatedAt: new Date(),
-                files: [...p.files.filter((f) => f.path !== file.path), file],
-              }
-            : p
-        ),
-      }));
-    },
+  deleteFile: (projectId, path) => {
+    set((state) => ({
+      files: state.files.filter((f) => f.path !== path),
+    }));
+    supabase
+      .from('project_files')
+      .delete()
+      .eq('project_id', projectId)
+      .eq('path', path)
+      .then(() => {});
+  },
 
-    deleteFile: (projectId, path) => {
-      set((state) => ({
-        projects: state.projects.map((p) =>
-          p.id === projectId
-            ? {
-                ...p,
-                updatedAt: new Date(),
-                files: p.files.filter((f) => f.path !== path),
-              }
-            : p
-        ),
-      }));
-    },
-
-    getFile: (projectId, path) => {
-      const project = get().projects.find((p) => p.id === projectId);
-      return project?.files.find((f) => f.path === path);
-    },
-
-    connectSupabase: (projectId, projectName) => {
-      set((state) => ({
-        integrations: {
-          ...state.integrations,
-          supabase: { connected: true, projectId, projectName },
-        },
-      }));
-    },
-
-    disconnectSupabase: () => {
-      set((state) => ({
-        integrations: {
-          ...state.integrations,
-          supabase: { connected: false },
-        },
-      }));
-    },
-
-    connectGitHub: (repoUrl, branch = 'main') => {
-      set((state) => ({
-        integrations: {
-          ...state.integrations,
-          github: { connected: true, repoUrl, branch, lastSync: new Date() },
-        },
-      }));
-    },
-
-    disconnectGitHub: () => {
-      set((state) => ({
-        integrations: {
-          ...state.integrations,
-          github: { connected: false },
-        },
-      }));
-    },
-  };
-});
+  getFile: (_projectId, path) => {
+    return get().files.find((f) => f.path === path);
+  },
+}));
