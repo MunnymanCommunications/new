@@ -1,114 +1,83 @@
-import { useState, useEffect } from 'react';
-import { getSupabase } from './lib/supabaseClient.ts';
-import type { Session } from '@supabase/supabase-js';
+import React, { useEffect, useState } from 'react';
+import { Header } from '@/components/layout/Header';
+import { IndexPage } from '@/pages/Index';
+import { ProjectsPage } from '@/pages/Projects';
+import { AuthPage } from '@/pages/Auth';
+import { SettingsPage } from '@/pages/Settings';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { Toaster } from '@/components/ui/toaster';
+import { useAuthStore } from '@/stores/auth';
+import { useProjectStore } from '@/stores/project';
+import { useChatStore } from '@/stores/chat';
+import { Loader2 } from 'lucide-react';
 
-import { useUser } from './contexts/UserContext.tsx';
-import AuthPage from './pages/AuthPage.tsx';
-import DashboardPage from './pages/DashboardPage.tsx';
-import AssistantLayout from './layouts/AssistantLayout.tsx';
-import CommunityPage from './pages/CommunityPage.tsx';
-import AdminPage from './pages/AdminPage.tsx';
-import { Icon } from './components/Icon.tsx';
-import SettingsPage from './pages/SettingsPage.tsx';
-
-const parseHash = () => {
-    const hash = window.location.hash;
-    if (!hash || hash === '#/') return { path: 'dashboard' };
-    if (hash === '#/auth') return { path: 'auth' };
-    if (hash === '#/community') return { path: 'community' };
-    if (hash === '#/admin') return { path: 'admin' };
-    if (hash === '#/assistant/new') return { path: 'new_assistant' };
-    
-    const assistantMatch = hash.match(/^#\/assistant\/(.+)$/);
-    if (assistantMatch && assistantMatch[1]) {
-        return { path: 'assistant', id: assistantMatch[1] };
-    }
-    
-    if (hash !== '#/') {
-      window.location.hash = '#/';
-    }
-    return { path: 'dashboard' };
-};
+type Page = 'auth' | 'projects' | 'editor' | 'settings';
 
 export default function App() {
-    const [session, setSession] = useState<Session | null>(null);
-    const [route, setRoute] = useState(parseHash());
-    const [loading, setLoading] = useState(true);
-    const { profile, loading: userLoading } = useUser();
+  const [currentPage, setCurrentPage] = useState<Page>('editor');
+  const { user, loading, initialized, initialize, signOut } = useAuthStore();
+  const { loadProjects, currentProjectId } = useProjectStore();
+  const { loadMessages } = useChatStore();
 
-    useEffect(() => {
-        const supabase = getSupabase();
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setLoading(false);
-        }).catch(err => {
-            console.error("Error getting session:", err);
-            setLoading(false);
-        });
+  useEffect(() => {
+    initialize();
+  }, []);
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
-            if (_event === 'SIGNED_IN') {
-                window.location.hash = '#/';
-            }
-            if (_event === 'SIGNED_OUT') {
-                window.location.hash = '#/auth';
-            }
-            // Force a route parse on auth change to navigate correctly
-            setRoute(parseHash());
-        });
-
-        const handleHashChange = () => {
-            setRoute(parseHash());
-        };
-
-        window.addEventListener('hashchange', handleHashChange);
-
-        return () => {
-            subscription.unsubscribe();
-            window.removeEventListener('hashchange', handleHashChange);
-        };
-    }, []);
-
-    if (loading || userLoading) {
-        return (
-            <div className="flex items-center justify-center h-screen bg-base-light dark:bg-dark-base-light">
-                <Icon name="loader" className="w-16 h-16 animate-spin text-brand-secondary-glow"/>
-            </div>
-        );
+  useEffect(() => {
+    if (user) {
+      loadProjects();
     }
-    
-    if (!session) {
-        return <AuthPage />;
-    }
+  }, [user]);
 
-    // Admin guard
-    if (route.path === 'admin' && profile?.role !== 'admin') {
-        window.location.hash = '#/';
-        return (
-             <div className="flex items-center justify-center h-screen bg-base-light dark:bg-dark-base-light">
-                <Icon name="loader" className="w-16 h-16 animate-spin text-brand-secondary-glow"/>
-            </div>
-        );
+  useEffect(() => {
+    if (currentProjectId) {
+      loadMessages(currentProjectId);
     }
+  }, [currentProjectId]);
 
-    switch (route.path) {
-        case 'dashboard':
-            return <DashboardPage />;
-        case 'assistant':
-            if (route.id) {
-                return <AssistantLayout assistantId={route.id} />;
-            }
-            window.location.hash = '#/';
-            return <DashboardPage />;
-        case 'new_assistant':
-            return <SettingsPage onComplete={(assistantId) => window.location.hash = `#/assistant/${assistantId}`} />;
-        case 'community':
-            return <CommunityPage />;
-        case 'admin':
-            return <AdminPage />;
-        default:
-            window.location.hash = '#/';
-            return <DashboardPage />;
-    }
+  const handleNavigate = (page: string) => {
+    setCurrentPage(page as Page);
+  };
+
+  const handleOpenProject = (id: string) => {
+    useProjectStore.getState().setCurrentProject(id);
+    setCurrentPage('editor');
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    setCurrentPage('auth');
+  };
+
+  // Show loading spinner while auth initializes
+  if (!initialized) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Show auth page if not logged in
+  if (!user) {
+    return <AuthPage />;
+  }
+
+  return (
+    <ErrorBoundary>
+      <div className="h-screen flex flex-col overflow-hidden">
+        <Header onNavigate={handleNavigate} onSignOut={handleSignOut} />
+        <main className="flex-1 overflow-hidden">
+          {currentPage === 'projects' && (
+            <ProjectsPage onOpenProject={handleOpenProject} />
+          )}
+          {currentPage === 'editor' && <IndexPage />}
+          {currentPage === 'settings' && (
+            <SettingsPage onBack={() => setCurrentPage('editor')} />
+          )}
+        </main>
+        <Toaster />
+      </div>
+    </ErrorBoundary>
+  );
 }

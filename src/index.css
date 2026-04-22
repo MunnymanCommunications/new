@@ -3,55 +3,164 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 245 58% 51%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 245 58% 51%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+    --card: 223 47% 8%;
+    --card-foreground: 210 40% 98%;
+    --popover: 223 47% 8%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 245 58% 51%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217 33% 14%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 14%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217 33% 14%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 18%;
+    --input: 217 33% 18%;
+    --ring: 245 58% 51%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
   body {
-    @apply bg-base-light text-text-primary antialiased;
-    @apply dark:bg-dark-base-light dark:text-dark-text-primary;
-    background-image: radial-gradient(circle at top right, theme('colors.brand-tertiary-glow / 0.1'), transparent 40%),
-                      radial-gradient(circle at bottom left, theme('colors.brand-secondary-glow / 0.1'), transparent 50%);
-    background-attachment: fixed;
-  }
-  
-  .dark body {
-    background-image: radial-gradient(circle at top right, theme('colors.brand-tertiary-glow / 0.15'), transparent 40%),
-                      radial-gradient(circle at bottom left, theme('colors.brand-secondary-glow / 0.15'), transparent 50%);
+    @apply bg-background text-foreground font-sans antialiased;
+    overflow: hidden;
   }
 
-  /* Custom scrollbar for better aesthetics */
-  ::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-base-medium dark:bg-dark-base-medium;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-brand-tertiary dark:bg-dark-text-tertiary;
-    border-radius: 4px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-brand-secondary dark:bg-dark-text-secondary;
+  html, body, #root {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
   }
 }
 
-@layer components {
-  .glassmorphic {
-    @apply bg-white/60 backdrop-blur-xl border border-white/20 shadow-xl;
-    @apply dark:bg-dark-base-medium/60 dark:border-white/10;
-  }
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-@layer utilities {
-  .hue-slider {
-    background: linear-gradient(to right, hsl(0, 100%, 50%), hsl(60, 100%, 50%), hsl(120, 100%, 50%), hsl(180, 100%, 50%), hsl(240, 100%, 50%), hsl(300, 100%, 50%), hsl(360, 100%, 50%));
-  }
-  
-  .hue-slider::-webkit-slider-thumb {
-    @apply w-5 h-5 bg-white rounded-full border-2 border-brand-secondary-glow cursor-pointer -mt-1.5 appearance-none;
-  }
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 
-  .hue-slider::-moz-range-thumb {
-    @apply w-5 h-5 bg-white rounded-full border-2 border-brand-secondary-glow cursor-pointer;
-  }
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: hsl(var(--card) / 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid hsl(var(--border) / 0.5);
+}
+
+.glass-strong {
+  background: hsl(var(--card) / 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid hsl(var(--border) / 0.3);
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Gradient border utility */
+.gradient-border {
+  position: relative;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Pulse animation for AI thinking */
+@keyframes thinking-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+.thinking-dot {
+  animation: thinking-pulse 1.4s ease-in-out infinite;
+}
+
+.thinking-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.thinking-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* Code block styling */
+.prose pre {
+  @apply rounded-lg bg-secondary/50 border border-border p-4 overflow-x-auto;
+}
+
+.prose code {
+  @apply font-mono text-sm;
+}
+
+.prose p code {
+  @apply bg-secondary/50 px-1.5 py-0.5 rounded text-primary;
+}
+
+/* Resizable panels */
+[data-panel-group-direction="horizontal"] > [data-resize-handle-active] {
+  background-color: hsl(var(--primary) / 0.3);
 }

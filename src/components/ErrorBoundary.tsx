@@ -1,5 +1,4 @@
-import { Component, ErrorInfo, ReactNode } from 'react';
-import { Icon } from './Icon.tsx';
+import React, { Component, type ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -7,49 +6,35 @@ interface Props {
 
 interface State {
   hasError: boolean;
-  error?: Error;
+  error: Error | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  // FIX: Replaced the constructor-based state initialization with a class property.
-  // This is a more modern syntax and resolves the TypeScript errors where `this.state`
-  // and `this.props` were not being correctly recognized on the class instance.
-  public state: State = {
-    hasError: false,
-    error: undefined,
-  };
+  state: State = { hasError: false, error: null };
 
   static getDerivedStateFromError(error: Error): State {
-    // Update state so the next render will show the fallback UI.
     return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // You can also log the error to an error reporting service
-    console.error("Uncaught error:", error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex flex-col items-center justify-center h-screen text-center p-4 bg-base-light dark:bg-dark-base-light">
-            <Icon name="error" className="w-16 h-16 text-danger mb-4" />
-            <h1 className="text-2xl font-bold text-text-primary dark:text-dark-text-primary">Something went wrong.</h1>
-            <p className="text-text-secondary dark:text-dark-text-secondary mt-2">We've logged the issue and are looking into it. Please refresh the page to try again.</p>
-            {this.state.error && (
-                <details className="mt-4 text-left bg-base-medium dark:bg-dark-base-medium p-3 rounded-lg max-w-lg w-full">
-                    <summary className="cursor-pointer font-semibold text-text-primary dark:text-dark-text-primary">Error Details</summary>
-                    <pre className="mt-2 text-xs text-danger whitespace-pre-wrap overflow-x-auto">
-                        {this.state.error.stack}
-                    </pre>
-                </details>
-            )}
+        <div className="h-screen flex items-center justify-center bg-background text-foreground">
+          <div className="text-center max-w-md mx-auto p-8">
+            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">!</span>
+            </div>
+            <h1 className="text-xl font-bold mb-2">Something went wrong</h1>
+            <p className="text-sm text-muted-foreground mb-4">
+              {this.state.error?.message || 'An unexpected error occurred.'}
+            </p>
             <button
               onClick={() => window.location.reload()}
-              className="mt-6 bg-brand-secondary-glow text-on-brand font-bold py-2 px-6 rounded-full transition-transform transform hover:scale-105"
+              className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
             >
-                Refresh Page
+              Reload Page
             </button>
+          </div>
         </div>
       );
     }
