@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Database,
   GitBranch,
@@ -13,6 +13,9 @@ import {
   User,
   LogOut,
   CreditCard,
+  Loader2,
+  ExternalLink,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,6 +45,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { useProjectStore } from '@/stores/project';
 import { useAuthStore } from '@/stores/auth';
+import { publishProject, unpublishProject, getDeployStatus, getExportUrl, type DeployStatus } from '@/lib/deploy-service';
 
 interface HeaderProps {
   onNavigate: (page: string) => void;
@@ -52,12 +56,26 @@ export function Header({ onNavigate, onSignOut }: HeaderProps) {
   const [darkMode, setDarkMode] = useState(true);
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
+  const [showDeploy, setShowDeploy] = useState(false);
+  const [subdomain, setSubdomain] = useState('');
+  const [deploying, setDeploying] = useState(false);
+  const [deployStatus, setDeployStatus] = useState<DeployStatus | null>(null);
+  const [deployError, setDeployError] = useState('');
 
   const { projects, currentProjectId, createProject, setCurrentProject } =
     useProjectStore();
   const { profile, user } = useAuthStore();
 
   const currentProject = projects.find((p) => p.id === currentProjectId);
+
+  useEffect(() => {
+    if (showDeploy && currentProjectId) {
+      getDeployStatus(currentProjectId).then((status) => {
+        setDeployStatus(status);
+        if (status?.subdomain) setSubdomain(status.subdomain);
+      });
+    }
+  }, [showDeploy, currentProjectId]);
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -70,6 +88,34 @@ export function Header({ onNavigate, onSignOut }: HeaderProps) {
       setNewProjectName('');
       setShowNewProject(false);
     }
+  };
+
+  const handlePublish = async () => {
+    if (!currentProjectId || !subdomain.trim()) return;
+    setDeploying(true);
+    setDeployError('');
+    const result = await publishProject(currentProjectId, subdomain.trim());
+    setDeploying(false);
+    if (result.success) {
+      const status = await getDeployStatus(currentProjectId);
+      setDeployStatus(status);
+    } else {
+      setDeployError(result.error || 'Failed to publish');
+    }
+  };
+
+  const handleUnpublish = async () => {
+    if (!currentProjectId) return;
+    setDeploying(true);
+    await unpublishProject(currentProjectId);
+    setDeploying(false);
+    setDeployStatus(null);
+    setSubdomain('');
+  };
+
+  const handleExport = () => {
+    if (!currentProjectId) return;
+    window.open(getExportUrl(currentProjectId), '_blank');
   };
 
   const creditsRemaining = profile?.credits_remaining ?? 0;
@@ -146,9 +192,10 @@ export function Header({ onNavigate, onSignOut }: HeaderProps) {
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowDeploy(true)}>
                 <Rocket className="w-4 h-4" />
                 <span className="hidden md:inline">Deploy</span>
+                {deployStatus?.published && <span className="w-2 h-2 rounded-full bg-green-400" />}
               </Button>
             </TooltipTrigger>
             <TooltipContent>Deploy your app</TooltipContent>
@@ -236,6 +283,87 @@ export function Header({ onNavigate, onSignOut }: HeaderProps) {
               Create Project
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deploy Dialog */}
+      <Dialog open={showDeploy} onOpenChange={setShowDeploy}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deploy Project</DialogTitle>
+            <DialogDescription>
+              Publish your project to a live subdomain or export it as a bundle.
+            </DialogDescription>
+          </DialogHeader>
+
+          {!currentProjectId ? (
+            <p className="text-sm text-muted-foreground">Select a project first.</p>
+          ) : (
+            <div className="space-y-4">
+              {deployStatus?.published ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <span className="w-2 h-2 rounded-full bg-green-400" />
+                    <span className="text-sm font-medium text-green-400">Live</span>
+                    <a
+                      href={`https://${deployStatus.subdomain}.${deployStatus.domain}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-auto text-sm text-primary hover:underline flex items-center gap-1"
+                    >
+                      {deployStatus.subdomain}.{deployStatus.domain}
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  {deployStatus.lastPublished && (
+                    <p className="text-xs text-muted-foreground">
+                      Last published: {new Date(deployStatus.lastPublished).toLocaleString()}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button onClick={handlePublish} disabled={deploying} className="flex-1">
+                      {deploying ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Rocket className="w-4 h-4 mr-2" />}
+                      Republish
+                    </Button>
+                    <Button variant="destructive" onClick={handleUnpublish} disabled={deploying}>
+                      Unpublish
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Subdomain</label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder="my-app"
+                        value={subdomain}
+                        onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                        onKeyDown={(e) => e.key === 'Enter' && handlePublish()}
+                      />
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">
+                        .{deployStatus?.domain || 'yourdomain.com'}
+                      </span>
+                    </div>
+                  </div>
+                  {deployError && (
+                    <p className="text-sm text-destructive">{deployError}</p>
+                  )}
+                  <Button onClick={handlePublish} disabled={deploying || subdomain.length < 3} className="w-full">
+                    {deploying ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Rocket className="w-4 h-4 mr-2" />}
+                    Publish
+                  </Button>
+                </div>
+              )}
+
+              <div className="border-t border-border pt-3">
+                <Button variant="outline" size="sm" onClick={handleExport} className="w-full gap-2">
+                  <Download className="w-4 h-4" />
+                  Export Project as JSON
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </TooltipProvider>

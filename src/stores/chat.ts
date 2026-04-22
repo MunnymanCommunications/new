@@ -163,6 +163,9 @@ What would you like to build today?`,
 
     let fullContent = '';
 
+    // Get preferred model from auth store (if available)
+    const preferredModel = (window as any).__vibecraft_preferred_model;
+
     await streamAIChat(recentMessages, projectContext, state.mode, {
       onText: (text) => {
         fullContent += text;
@@ -213,13 +216,13 @@ What would you like to build today?`,
           onFilesChanged(fileChanges);
         }
       },
-      onError: (error) => {
+      onError: (err) => {
         get().updateMessage(assistantId, {
-          content: `Sorry, an error occurred: ${error}`,
+          content: `Sorry, an error occurred: ${err}`,
           isStreaming: false,
         });
         set({ isStreaming: false });
       },
-    });
+    }, preferredModel);
   },
 }));

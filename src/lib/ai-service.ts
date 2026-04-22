@@ -17,7 +17,8 @@ export async function streamAIChat(
   messages: AIMessage[],
   projectContext: string,
   mode: 'build' | 'chat',
-  callbacks: StreamCallbacks
+  callbacks: StreamCallbacks,
+  modelId?: string
 ): Promise<void> {
   const token = await getSessionToken();
 
@@ -28,7 +29,7 @@ export async function streamAIChat(
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ messages, projectContext, mode }),
+      body: JSON.stringify({ messages, projectContext, mode, modelId }),
     });
 
     if (!response.ok) {

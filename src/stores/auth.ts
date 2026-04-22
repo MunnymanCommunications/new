@@ -11,6 +11,8 @@ interface Profile {
   credits_remaining: number;
   credits_total: number;
   credits_reset_at: string;
+  preferred_provider: string | null;
+  preferred_model: string | null;
 }
 
 interface AuthState {

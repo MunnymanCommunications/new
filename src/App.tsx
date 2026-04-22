@@ -4,6 +4,7 @@ import { IndexPage } from '@/pages/Index';
 import { ProjectsPage } from '@/pages/Projects';
 import { AuthPage } from '@/pages/Auth';
 import { SettingsPage } from '@/pages/Settings';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Toaster } from '@/components/ui/toaster';
 import { useAuthStore } from '@/stores/auth';
 import { useProjectStore } from '@/stores/project';
@@ -63,18 +64,20 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <Header onNavigate={handleNavigate} onSignOut={handleSignOut} />
-      <main className="flex-1 overflow-hidden">
-        {currentPage === 'projects' && (
-          <ProjectsPage onOpenProject={handleOpenProject} />
-        )}
-        {currentPage === 'editor' && <IndexPage />}
-        {currentPage === 'settings' && (
-          <SettingsPage onBack={() => setCurrentPage('editor')} />
-        )}
-      </main>
-      <Toaster />
-    </div>
+    <ErrorBoundary>
+      <div className="h-screen flex flex-col overflow-hidden">
+        <Header onNavigate={handleNavigate} onSignOut={handleSignOut} />
+        <main className="flex-1 overflow-hidden">
+          {currentPage === 'projects' && (
+            <ProjectsPage onOpenProject={handleOpenProject} />
+          )}
+          {currentPage === 'editor' && <IndexPage />}
+          {currentPage === 'settings' && (
+            <SettingsPage onBack={() => setCurrentPage('editor')} />
+          )}
+        </main>
+        <Toaster />
+      </div>
+    </ErrorBoundary>
   );
 }
