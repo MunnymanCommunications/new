@@ -1,10 +1,11 @@
 import { Router, type Request, type Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { verifyAuth } from '../middleware/auth.js';
+import { logger } from '../lib/error-logger.js';
+import { toolTracker } from '../lib/tool-registry.js';
 
 const router = Router();
 
-// Service role client for privileged DB operations
 function getServiceClient() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -12,7 +13,7 @@ function getServiceClient() {
   return createClient(url, key);
 }
 
-// POST /api/db/execute-sql - Execute SQL in a project's schema
+// POST /api/db/execute-sql
 router.post('/execute-sql', verifyAuth, async (req: Request, res: Response) => {
   const { projectId, sql } = req.body;
   const userId = (req as any).userId;
@@ -22,22 +23,23 @@ router.post('/execute-sql', verifyAuth, async (req: Request, res: Response) => {
     return;
   }
 
-  // Basic SQL safety: block dangerous operations
-  const upperSql = sql.toUpperCase().trim();
-  const forbidden = ['DROP DATABASE', 'DROP SCHEMA public', 'TRUNCATE profiles', 'DELETE FROM profiles',
-    'DROP TABLE profiles', 'DROP TABLE projects', 'DROP TABLE project_files',
-    'DROP TABLE chat_messages', 'ALTER TABLE profiles', 'ALTER TABLE projects'];
-  for (const f of forbidden) {
-    if (upperSql.includes(f)) {
-      res.status(403).json({ error: `Operation not allowed: ${f}` });
-      return;
-    }
+  // Validate through tool registry
+  const validation = toolTracker.validate('sql_execute', { sql });
+  if (!validation.valid) {
+    logger.warn('sql_execution', `SQL validation failed: ${validation.error}`, {
+      userId,
+      projectId,
+      details: { sqlPreview: sql.slice(0, 200) },
+    });
+    res.status(403).json({ error: validation.error });
+    return;
   }
+
+  const execution = toolTracker.start('sql_execute', { sql: sql.slice(0, 500) }, { projectId, userId });
 
   try {
     const supabase = getServiceClient();
 
-    // Verify the user owns this project
     const { data: project, error: projectError } = await supabase
       .from('projects')
       .select('id, supabase_schema')
@@ -46,20 +48,36 @@ router.post('/execute-sql', verifyAuth, async (req: Request, res: Response) => {
       .single();
 
     if (projectError || !project) {
+      toolTracker.fail(execution.id, 'Project not found');
       res.status(404).json({ error: 'Project not found' });
       return;
     }
 
-    // Execute the SQL in the project's schema
     const { data, error } = await supabase.rpc('execute_project_sql', {
       project_uuid: projectId,
       sql_text: sql,
     });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      toolTracker.fail(execution.id, error.message);
+      logger.error('sql_execution', `SQL execution failed: ${error.message}`, {
+        userId,
+        projectId,
+        details: {
+          sqlPreview: sql.slice(0, 300),
+          errorCode: (error as any).code,
+          errorHint: (error as any).hint,
+        },
+      });
+      res.status(500).json({
+        error: error.message,
+        hint: (error as any).hint || undefined,
+        executionId: execution.id,
+      });
       return;
     }
+
+    toolTracker.complete(execution.id, { rowCount: data?.length || 0 });
 
     // Record the SQL in project_db_objects
     const objectType = detectObjectType(sql);
@@ -74,14 +92,36 @@ router.post('/execute-sql', verifyAuth, async (req: Request, res: Response) => {
       }, { onConflict: 'project_id,object_type,object_name' });
     }
 
-    res.json({ success: true, data });
+    logger.info('sql_execution', `SQL executed: ${objectType || 'query'} ${objectName || ''}`, {
+      userId,
+      projectId,
+      durationMs: execution.durationMs,
+    });
+
+    res.json({ success: true, data, executionId: execution.id });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({ error: message });
+    const exec = toolTracker.fail(execution.id, message);
+
+    // Retry logic
+    if (exec && exec.status === 'retrying') {
+      logger.info('sql_execution', 'Retrying SQL execution', { projectId, userId });
+      // For SQL, a retry is usually not helpful (same query, same error)
+      // Mark as final failure
+      toolTracker.fail(execution.id, message);
+    }
+
+    logger.error('sql_execution', `SQL execution crashed: ${message}`, {
+      userId,
+      projectId,
+      error,
+    });
+
+    res.status(500).json({ error: message, executionId: execution.id });
   }
 });
 
-// GET /api/db/tables/:projectId - List tables in a project's schema
+// GET /api/db/tables/:projectId
 router.get('/tables/:projectId', verifyAuth, async (req: Request, res: Response) => {
   const { projectId } = req.params;
   const userId = (req as any).userId;
@@ -106,6 +146,7 @@ router.get('/tables/:projectId', verifyAuth, async (req: Request, res: Response)
     });
 
     if (error) {
+      logger.error('sql_execution', `Failed to list tables: ${error.message}`, { projectId, userId });
       res.status(500).json({ error: error.message });
       return;
     }
@@ -113,6 +154,7 @@ router.get('/tables/:projectId', verifyAuth, async (req: Request, res: Response)
     res.json({ tables: tables || [], schema: project.supabase_schema });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error('sql_execution', `List tables failed: ${message}`, { projectId, userId, error });
     res.status(500).json({ error: message });
   }
 });
@@ -143,6 +185,7 @@ router.get('/columns/:projectId/:tableName', verifyAuth, async (req: Request, re
     });
 
     if (error) {
+      logger.error('sql_execution', `Failed to get columns for ${tableName}: ${error.message}`, { projectId, userId });
       res.status(500).json({ error: error.message });
       return;
     }
@@ -154,7 +197,7 @@ router.get('/columns/:projectId/:tableName', verifyAuth, async (req: Request, re
   }
 });
 
-// GET /api/db/objects/:projectId - List all DB objects for a project
+// GET /api/db/objects/:projectId
 router.get('/objects/:projectId', verifyAuth, async (req: Request, res: Response) => {
   const { projectId } = req.params;
   const userId = (req as any).userId;
@@ -162,7 +205,6 @@ router.get('/objects/:projectId', verifyAuth, async (req: Request, res: Response
   try {
     const supabase = getServiceClient();
 
-    // Verify ownership
     const { data: project } = await supabase
       .from('projects')
       .select('id')

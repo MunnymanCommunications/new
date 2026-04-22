@@ -6,15 +6,27 @@ import {
   buildProjectContext,
   extractSQLBlocks,
   extractFileBlocks,
+  type ContextMeta,
 } from '@/lib/ai-service';
 import { executeProjectSQL } from '@/lib/database-manager';
 import type { ChatMessage, FileChange } from '@/types';
 import type { ProjectFile } from '@/types';
 
+interface ToolExecution {
+  id: string;
+  tool: 'sql' | 'file';
+  status: 'running' | 'success' | 'error' | 'retrying';
+  label: string;
+  error?: string;
+  attempt: number;
+}
+
 interface ChatState {
   messages: ChatMessage[];
   isStreaming: boolean;
   mode: 'build' | 'chat';
+  contextMeta: ContextMeta | null;
+  activeTools: ToolExecution[];
 
   loadMessages: (projectId: string) => Promise<void>;
   addMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => string;
@@ -30,6 +42,8 @@ interface ChatState {
     onFilesChanged?: (changes: FileChange[]) => void
   ) => Promise<void>;
 }
+
+const MAX_SQL_RETRIES = 1;
 
 export const useChatStore = create<ChatState>((set, get) => ({
   messages: [
@@ -53,6 +67,8 @@ What would you like to build today?`,
   ],
   isStreaming: false,
   mode: 'build',
+  contextMeta: null,
+  activeTools: [],
 
   loadMessages: async (projectId) => {
     const { data } = await supabase
@@ -71,7 +87,6 @@ What would you like to build today?`,
       }));
       set({ messages });
     } else {
-      // Reset to welcome message for new projects
       set({
         messages: [
           {
@@ -113,6 +128,8 @@ What would you like to build today?`,
           mode: 'build',
         },
       ],
+      contextMeta: null,
+      activeTools: [],
     });
   },
 
@@ -122,14 +139,13 @@ What would you like to build today?`,
   sendMessage: async (content, projectId, files, onFilesChanged) => {
     const state = get();
 
-    // Add user message
     get().addMessage({
       role: 'user',
       content,
       mode: state.mode,
     });
 
-    set({ isStreaming: true });
+    set({ isStreaming: true, contextMeta: null, activeTools: [] });
 
     // Save user message to DB
     supabase
@@ -142,7 +158,6 @@ What would you like to build today?`,
       })
       .then(() => {});
 
-    // Add placeholder assistant message
     const assistantId = get().addMessage({
       role: 'assistant',
       content: '',
@@ -150,7 +165,7 @@ What would you like to build today?`,
       isStreaming: true,
     });
 
-    // Build conversation history for AI
+    // Build conversation history
     const recentMessages = get()
       .messages.filter((m) => m.id !== assistantId && m.id !== 'welcome')
       .slice(-10)
@@ -161,9 +176,12 @@ What would you like to build today?`,
 
     const projectContext = buildProjectContext(files);
 
-    let fullContent = '';
+    // Send structured files so the server can do smart context management
+    const structuredFiles = files
+      .filter(f => f.path.endsWith('.tsx') || f.path.endsWith('.ts') || f.path.endsWith('.css'))
+      .map(f => ({ path: f.path, content: f.content }));
 
-    // Get preferred model from auth store (if available)
+    let fullContent = '';
     const preferredModel = (window as any).__vibecraft_preferred_model;
 
     await streamAIChat(recentMessages, projectContext, state.mode, {
@@ -171,22 +189,86 @@ What would you like to build today?`,
         fullContent += text;
         get().updateMessage(assistantId, { content: fullContent });
       },
+      onContextMeta: (meta) => {
+        set({ contextMeta: meta });
+
+        if (meta.contextWasTruncated) {
+          const dropInfo: string[] = [];
+          if (meta.filesDropped && meta.filesDropped.length > 0) {
+            dropInfo.push(`${meta.filesDropped.length} file(s) excluded from context`);
+          }
+          if (meta.messagesDropped && meta.messagesDropped > 0) {
+            dropInfo.push(`${meta.messagesDropped} older message(s) trimmed`);
+          }
+          console.warn('[VibeCraft] Context was truncated:', dropInfo.join(', '), meta);
+        }
+
+        if (meta.tokenBudget?.overBudget) {
+          console.warn('[VibeCraft] Context over budget by', meta.tokenBudget.overageTokens, 'tokens');
+        }
+      },
       onDone: async () => {
-        // Parse SQL blocks and auto-execute
         const sqlBlocks = extractSQLBlocks(fullContent);
         const fileBlocks = extractFileBlocks(fullContent);
         const fileChanges: FileChange[] = [];
 
-        for (const sql of sqlBlocks) {
-          const result = await executeProjectSQL(projectId, sql);
-          if (!result.success) {
-            fullContent += `\n\n> **SQL Error:** ${result.error}`;
-          } else {
-            fullContent += `\n\n> **SQL executed successfully.**`;
+        // Execute SQL blocks with retry
+        for (let i = 0; i < sqlBlocks.length; i++) {
+          const sql = sqlBlocks[i];
+          const toolId = `sql_${i}_${Date.now()}`;
+
+          set((s) => ({
+            activeTools: [...s.activeTools, {
+              id: toolId,
+              tool: 'sql',
+              status: 'running',
+              label: sql.slice(0, 80).replace(/\n/g, ' '),
+              attempt: 1,
+            }],
+          }));
+
+          let success = false;
+          let lastError = '';
+
+          for (let attempt = 0; attempt <= MAX_SQL_RETRIES; attempt++) {
+            if (attempt > 0) {
+              set((s) => ({
+                activeTools: s.activeTools.map((t) =>
+                  t.id === toolId ? { ...t, status: 'retrying' as const, attempt: attempt + 1 } : t
+                ),
+              }));
+              await new Promise((r) => setTimeout(r, 1000 * attempt));
+            }
+
+            const result = await executeProjectSQL(projectId, sql);
+            if (result.success) {
+              success = true;
+              fullContent += `\n\n> **SQL executed successfully.**`;
+              set((s) => ({
+                activeTools: s.activeTools.map((t) =>
+                  t.id === toolId ? { ...t, status: 'success' as const } : t
+                ),
+              }));
+              break;
+            } else {
+              lastError = result.error || 'Unknown SQL error';
+            }
           }
+
+          if (!success) {
+            fullContent += `\n\n> **SQL Error:** ${lastError}`;
+            set((s) => ({
+              activeTools: s.activeTools.map((t) =>
+                t.id === toolId ? { ...t, status: 'error' as const, error: lastError } : t
+              ),
+            }));
+            console.error('[VibeCraft] SQL execution failed after retries:', lastError, sql.slice(0, 200));
+          }
+
           get().updateMessage(assistantId, { content: fullContent });
         }
 
+        // Process file blocks
         for (const block of fileBlocks) {
           fileChanges.push({
             path: block.path,
@@ -217,12 +299,13 @@ What would you like to build today?`,
         }
       },
       onError: (err) => {
+        console.error('[VibeCraft] AI stream error:', err);
         get().updateMessage(assistantId, {
           content: `Sorry, an error occurred: ${err}`,
           isStreaming: false,
         });
         set({ isStreaming: false });
       },
-    }, preferredModel);
+    }, preferredModel, structuredFiles);
   },
 }));

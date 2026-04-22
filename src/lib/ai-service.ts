@@ -7,10 +7,30 @@ export interface AIMessage {
   content: string;
 }
 
+export interface ContextMeta {
+  filesIncluded?: number;
+  filesDropped?: string[];
+  messagesDropped?: number;
+  contextWasTruncated?: boolean;
+  legacyContextPath?: boolean;
+  tokenBudget?: {
+    systemPromptTokens: number;
+    projectContextTokens: number;
+    conversationTokens: number;
+    totalInputTokens: number;
+    inputBudget: number;
+    maxOutputTokens: number;
+    overBudget: boolean;
+    overageTokens: number;
+    utilizationPercent: number;
+  };
+}
+
 export interface StreamCallbacks {
   onText: (text: string) => void;
   onDone: () => void;
   onError: (error: string) => void;
+  onContextMeta?: (meta: ContextMeta) => void;
 }
 
 export async function streamAIChat(
@@ -18,7 +38,8 @@ export async function streamAIChat(
   projectContext: string,
   mode: 'build' | 'chat',
   callbacks: StreamCallbacks,
-  modelId?: string
+  modelId?: string,
+  projectFiles?: Array<{ path: string; content: string }>
 ): Promise<void> {
   const token = await getSessionToken();
 
@@ -29,7 +50,13 @@ export async function streamAIChat(
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ messages, projectContext, mode, modelId }),
+      body: JSON.stringify({
+        messages,
+        projectContext,
+        mode,
+        modelId,
+        projectFiles,
+      }),
     });
 
     if (!response.ok) {
@@ -67,9 +94,11 @@ export async function streamAIChat(
             } else if (data.type === 'error') {
               callbacks.onError(data.error);
               return;
+            } else if (data.type === 'context_meta') {
+              callbacks.onContextMeta?.(data as ContextMeta);
             }
           } catch {
-            // skip
+            // skip malformed lines
           }
         }
       }
